@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,103 +16,165 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea"; // Kita akan butuh ini, mari kita tambahkan
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Paintbrush, Wand2 } from "lucide-react";
+import { Paintbrush, Wand2, LoaderCircle } from "lucide-react";
 
-export function GeneratorForm() {
+// Definisikan tipe untuk data form
+type FormData = {
+  prompt: string;
+  family: string;
+  style: string;
+  palette: string;
+};
+
+// Definisikan tipe untuk kandidat
+type Candidate = {
+  s3KeyPng: string;
+  idx: number;
+};
+
+// Definisikan props untuk komponen, termasuk fungsi callback
+type GeneratorFormProps = {
+  onGenerationComplete: (candidates: Candidate[]) => void;
+};
+
+export function GeneratorForm({ onGenerationComplete }: GeneratorFormProps) {
+  const [formData, setFormData] = useState<FormData>({
+    prompt: "",
+    family: "",
+    style: "",
+    palette: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = (name: keyof FormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    console.log("Mengirim data:", formData);
+
+    try {
+      const response = await fetch("/api/generate-batik", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Respons diterima dari API:", result);
+
+      // Panggil fungsi callback dari parent dengan data hasil
+      onGenerationComplete(result.candidates);
+    } catch (error) {
+      console.error("Gagal mengirim data ke API:", error);
+      alert("Terjadi kesalahan saat generate. Coba lagi."); // Beri feedback error ke user
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-none border-none">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Paintbrush className="w-5 h-5" />
-          Panel Kontrol
+          Generate via Teks
         </CardTitle>
         <CardDescription>
-          Atur parameter di bawah ini untuk menghasilkan motif batik.
+          Jelaskan motif yang Anda inginkan secara detail.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="space-y-6">
-          {/* Input: Prompt Teks */}
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="prompt">Deskripsi Motif (Prompt)</Label>
             <Textarea
               id="prompt"
               placeholder="Contoh: Batik Kawung sogan klasik dengan isen cecek"
-              className="min-h-[100px]"
+              className="min-h-[120px] bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700"
+              value={formData.prompt}
+              onChange={(e) => handleInputChange("prompt", e.target.value)}
+              required
             />
           </div>
 
-          {/* Input: Keluarga Motif */}
           <div className="space-y-2">
-            <Label htmlFor="family">Keluarga Motif</Label>
-            <Select name="family">
-              <SelectTrigger id="family" className="hover:cursor-pointer">
+            <Label>Keluarga Motif</Label>
+            <Select
+              name="family"
+              onValueChange={(value) => handleInputChange("family", value)}
+              required
+            >
+              <SelectTrigger className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700">
                 <SelectValue placeholder="Pilih keluarga motif" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem className="hover:cursor-pointer" value="kawung">
-                  Kawung
-                </SelectItem>
-                <SelectItem className="hover:cursor-pointer" value="parang">
-                  Parang/Lereng
-                </SelectItem>
+                <SelectItem value="kawung">Kawung</SelectItem>
+                <SelectItem value="parang">Parang/Lereng</SelectItem>
                 <SelectItem value="ceplok">Ceplok</SelectItem>
-                <SelectItem className="hover:cursor-pointer" value="semen">
-                  Semen
-                </SelectItem>
+                <SelectItem value="semen">Semen</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Input: Gaya & Palet dalam satu baris */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="style">Gaya</Label>
-              <Select name="style">
-                <SelectTrigger id="style" className="hover:cursor-pointer">
+              <Label>Gaya</Label>
+              <Select
+                name="style"
+                onValueChange={(value) => handleInputChange("style", value)}
+                required
+              >
+                <SelectTrigger className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700">
                   <SelectValue placeholder="Pilih gaya" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem className="hover:cursor-pointer" value="tulis">
-                    Tulis
-                  </SelectItem>
-                  <SelectItem className="hover:cursor-pointer" value="cap">
-                    Cap
-                  </SelectItem>
+                  <SelectItem value="tulis">Tulis</SelectItem>
+                  <SelectItem value="cap">Cap</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="palette">Palet Warna</Label>
-              <Select name="palette">
-                <SelectTrigger id="palette" className="hover:cursor-pointer">
+              <Label>Palet Warna</Label>
+              <Select
+                name="palette"
+                onValueChange={(value) => handleInputChange("palette", value)}
+                required
+              >
+                <SelectTrigger className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700">
                   <SelectValue placeholder="Pilih palet" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem className="hover:cursor-pointer" value="sogan">
-                    Sogan Klasik
-                  </SelectItem>
-                  <SelectItem className="hover:cursor-pointer" value="indigo">
-                    Indigo-Putih
-                  </SelectItem>
-                  <SelectItem className="hover:cursor-pointer" value="pesisir">
-                    Pesisir Cerah
-                  </SelectItem>
+                  <SelectItem value="sogan">Sogan Klasik</SelectItem>
+                  <SelectItem value="indigo">Indigo-Putih</SelectItem>
+                  <SelectItem value="pesisir">Pesisir Cerah</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Tombol Generate */}
           <Button
             type="submit"
             size="lg"
-            className="w-full hover:cursor-pointer"
+            className="w-full"
+            disabled={isLoading}
           >
-            <Wand2 className="w-4 h-4 mr-2" />
-            Generate Motif
+            {isLoading ? (
+              <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Wand2 className="w-4 h-4 mr-2" />
+            )}
+            {isLoading ? "Memproses..." : "Generate Motif"}
           </Button>
         </form>
       </CardContent>
