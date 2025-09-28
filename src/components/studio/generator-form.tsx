@@ -47,14 +47,20 @@ export function GeneratorForm() {
           <div className="space-y-2">
             <Label htmlFor="family">Keluarga Motif</Label>
             <Select name="family">
-              <SelectTrigger id="family">
+              <SelectTrigger id="family" className="hover:cursor-pointer">
                 <SelectValue placeholder="Pilih keluarga motif" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="kawung">Kawung</SelectItem>
-                <SelectItem value="parang">Parang/Lereng</SelectItem>
+                <SelectItem className="hover:cursor-pointer" value="kawung">
+                  Kawung
+                </SelectItem>
+                <SelectItem className="hover:cursor-pointer" value="parang">
+                  Parang/Lereng
+                </SelectItem>
                 <SelectItem value="ceplok">Ceplok</SelectItem>
-                <SelectItem value="semen">Semen</SelectItem>
+                <SelectItem className="hover:cursor-pointer" value="semen">
+                  Semen
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -64,32 +70,46 @@ export function GeneratorForm() {
             <div className="space-y-2">
               <Label htmlFor="style">Gaya</Label>
               <Select name="style">
-                <SelectTrigger id="style">
+                <SelectTrigger id="style" className="hover:cursor-pointer">
                   <SelectValue placeholder="Pilih gaya" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tulis">Tulis</SelectItem>
-                  <SelectItem value="cap">Cap</SelectItem>
+                  <SelectItem className="hover:cursor-pointer" value="tulis">
+                    Tulis
+                  </SelectItem>
+                  <SelectItem className="hover:cursor-pointer" value="cap">
+                    Cap
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="palette">Palet Warna</Label>
               <Select name="palette">
-                <SelectTrigger id="palette">
+                <SelectTrigger id="palette" className="hover:cursor-pointer">
                   <SelectValue placeholder="Pilih palet" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sogan">Sogan Klasik</SelectItem>
-                  <SelectItem value="indigo">Indigo-Putih</SelectItem>
-                  <SelectItem value="pesisir">Pesisir Cerah</SelectItem>
+                  <SelectItem className="hover:cursor-pointer" value="sogan">
+                    Sogan Klasik
+                  </SelectItem>
+                  <SelectItem className="hover:cursor-pointer" value="indigo">
+                    Indigo-Putih
+                  </SelectItem>
+                  <SelectItem className="hover:cursor-pointer" value="pesisir">
+                    Pesisir Cerah
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           {/* Tombol Generate */}
-          <Button type="submit" size="lg" className="w-full">
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full hover:cursor-pointer"
+          >
             <Wand2 className="w-4 h-4 mr-2" />
             Generate Motif
           </Button>

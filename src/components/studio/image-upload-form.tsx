@@ -21,15 +21,15 @@ export function ImageUploadForm() {
         <div className="space-y-2">
             <Label htmlFor="image-upload">File Gambar (PNG, JPG)</Label>
             <div className="w-full h-32 border-2 border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center text-center">
-                <FileUp className="w-8 h-8 text-zinc-400 mb-2" />
+                <FileUp className="w-8 h-8 text-zinc-400 mb-2 hover:cursor-pointer" />
                 <p className="text-sm text-zinc-500">Tarik & lepas gambar di sini, atau klik untuk memilih file</p>
                 {/* Input file ini disembunyikan dan akan dipicu oleh div di atasnya */}
                 <input id="image-upload" type="file" className="sr-only" />
             </div>
         </div>
 
-        <Button type="submit" size="lg" className="w-full">
-            <Wand2 className="w-4 h-4 mr-2" />
+        <Button type="submit" size="lg" className="w-full hover:cursor-pointer">
+            <Wand2 className="w-4 h-4 mr-2 " />
             Generate Variasi
         </Button>
       </CardContent>
