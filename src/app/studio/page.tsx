@@ -37,8 +37,8 @@ export default function StudioPage() {
             <Image
               src="/Batiku Only.png"
               alt="Batiku Logo"
-              width={150} // Sesuaikan ukurannya
-              height={20} // Sesuaikan ukurannya
+              width={150}
+              height={20}
             />
           </Link>
           <div className="flex-1"></div>
