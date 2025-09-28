@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="/public/Batiku Logo Full.png" alt="Batiku Logo" width="500"/>
+</p>
+
 # Batiku
 
 **Batiku** adalah platform web untuk menghasilkan **raport motif batik** (_seamless tile_) dari **teks** atau **gambar referensi milik pengguna**, dilengkapi editor ringan (repeat, simetri, palet, dan kepadatan _isèn_), serta **ekspor PNG 300 DPI & SVG** siap produksi. Batiku dibangun di atas **Amazon Bedrock** (GenAI) dengan arsitektur **serverless** di AWS.
