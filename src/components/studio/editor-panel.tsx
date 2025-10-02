@@ -10,8 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Info } from "lucide-react"; // <-- 1. Import ikon Info
 
-// 1. Definisikan tipe untuk props yang akan diterima dari parent
 export type EditorSettings = {
   repeat: "square" | "half-drop";
   symmetry: "none" | "2" | "4" | "8";
@@ -31,10 +31,9 @@ export function EditorPanel({ settings, onSettingsChange }: EditorPanelProps) {
   return (
     <div className="space-y-6">
       <Card className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-        <CardContent className="pt-6 space-y-4">
+        <CardContent className="pt-6 space-y-6">
           <p className="text-sm font-semibold">Opsi Tampilan Pola</p>
 
-          {/* 2. Hubungkan Select dengan state dari props */}
           <div className="space-y-2">
             <Label>Repeat</Label>
             <Select
@@ -72,6 +71,7 @@ export function EditorPanel({ settings, onSettingsChange }: EditorPanelProps) {
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <Label>Kepadatan Isèn</Label>
@@ -100,6 +100,17 @@ export function EditorPanel({ settings, onSettingsChange }: EditorPanelProps) {
               max={10}
               step={0.5}
             />
+          </div>
+
+          {/* --- 2. TAMBAHKAN KOTAK INFORMASI DI SINI --- */}
+          <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/50 dark:text-blue-300">
+            <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <p>
+              Opsi <strong>Kepadatan Isèn</strong> dan
+              <strong> Ketebalan Garis</strong> adalah instruksi untuk proses
+              vektorisasi dan hanya akan diterapkan pada file SVG saat Anda
+              menekan tombol <strong>Ekspor</strong>.
+            </p>
           </div>
         </CardContent>
       </Card>
