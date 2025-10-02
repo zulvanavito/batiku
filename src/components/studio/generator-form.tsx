@@ -30,7 +30,7 @@ type FormData = {
 
 // Definisikan tipe untuk kandidat
 type Candidate = {
-  s3KeyPng: string;
+  base64: string;
   idx: number;
 };
 
@@ -72,8 +72,6 @@ export function GeneratorForm({ onGenerationComplete }: GeneratorFormProps) {
 
       const result = await response.json();
       console.log("Respons diterima dari API:", result);
-
-      // Panggil fungsi callback dari parent dengan data hasil
       onGenerationComplete(result.candidates);
     } catch (error) {
       console.error("Gagal mengirim data ke API:", error);

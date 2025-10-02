@@ -2,16 +2,7 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -31,57 +22,88 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { toast, Toaster } from "sonner";
+
+// Import komponen-komponen studio
 import { GeneratorForm } from "@/components/studio/generator-form";
 import { ImageUploadForm } from "@/components/studio/image-upload-form";
 import { ResultsDisplay } from "@/components/studio/results-display";
-import { toast, Toaster } from "sonner";
+import {
+  EditorPanel,
+  type EditorSettings,
+} from "@/components/studio/editor-panel";
 
-// Definisikan tipe untuk kandidat
+// Definisikan tipe data untuk kandidat
 type Candidate = {
-  s3KeyPng: string;
+  base64: string;
   idx: number;
 };
 
 export default function StudioPage() {
+  // State management untuk seluruh halaman studio
   const [activeMode, setActiveMode] = useState<"text" | "image">("text");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
     null
   );
   const [activeTab, setActiveTab] = useState("generate");
-  const [isExporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [editorSettings, setEditorSettings] = useState<EditorSettings>({
+    repeat: "square",
+    symmetry: "none",
+    density: 50,
+    thickness: 1.5,
+  });
 
+  // Handler saat proses 'generate' selesai
   const handleGenerationComplete = (results: Candidate[]) => {
     setCandidates(results);
     setSelectedCandidate(null);
     setActiveTab("generate");
   };
 
+  // Handler saat pengguna memilih salah satu kandidat
   const handleSelectCandidate = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
     toast.success(`Kandidat #${candidate.idx} dipilih!`);
     setActiveTab("edit");
   };
 
+  // Handler untuk membatalkan pilihan kandidat
   const clearSelection = () => {
     setSelectedCandidate(null);
   };
 
+  // Handler untuk mengubah pengaturan di editor panel
+  const handleSettingsChange = <K extends keyof EditorSettings>(
+    key: K,
+    value: EditorSettings[K]
+  ) => {
+    setEditorSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Handler untuk tombol ekspor
   const handleExport = () => {
     if (!selectedCandidate) {
       toast.error("Silakan pilih salah satu kandidat terlebih dahulu.");
       return;
     }
+
+    setIsExporting(true);
     const exportPromise = fetch("/api/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ s3KeyPng: selectedCandidate.s3KeyPng }),
-    }).then(async (response) => {
-      if (!response.ok) throw new Error("Gagal memulai proses ekspor.");
-      const result = await response.json();
-      window.open(result.downloadUrl, "_blank");
-      return result;
-    });
+      body: JSON.stringify({ base64: selectedCandidate.base64 }),
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Gagal memulai proses ekspor.");
+        const result = await response.json();
+        window.open(result.downloadUrl, "_blank");
+        return result;
+      })
+      .finally(() => {
+        setIsExporting(false);
+      });
 
     toast.promise(exportPromise, {
       loading: "Memulai proses ekspor...",
@@ -124,9 +146,6 @@ export default function StudioPage() {
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* ====================================================== */}
-          {/* ========= INI ADALAH KODE TOOLBAR YANG HILANG ========= */}
-          {/* ====================================================== */}
           <aside className="inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-white dark:bg-black sm:flex">
             <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
               <Tooltip>
@@ -170,24 +189,35 @@ export default function StudioPage() {
           </aside>
 
           <main className="flex-1 flex items-center justify-center p-4 lg:p-8">
-            <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200p-4">
+            <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200 p-4">
               {selectedCandidate ? (
                 <div className="w-full h-full flex flex-col items-center justify-center relative">
-                  <div className="absolute top-0 right-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="m-5"
-                      onClick={clearSelection}
-                    >
+                  <div className="absolute top-0 right-0 p-2">
+                    <Button variant="ghost" size="sm" onClick={clearSelection}>
                       <X className="w-4 h-4 mr-2" /> Batal Pilih
                     </Button>
                   </div>
-                  <div className="w-2/3 h-2/3 bg-zinc-100 dark:bg-zinc-900 rounded-md flex items-center justify-center">
-                    <p className="text-zinc-500">
-                      Pratinjau Besar Kandidat #{selectedCandidate.idx}
+                  <div className="w-2/3 h-2/3 bg-zinc-100 dark:bg-zinc-900 rounded-md flex items-center justify-center overflow-hidden">
+                    <p
+                      className={`text-zinc-500 transition-transform duration-300 
+                      ${editorSettings.symmetry === "2" ? "scale-x-[-1]" : ""}
+                      ${editorSettings.symmetry === "4" ? "rotate-90" : ""}
+                      ${
+                        editorSettings.symmetry === "8"
+                          ? "rotate-180 scale-x-[-1]"
+                          : ""
+                      }
+                    `}
+                    >
+                      Pratinjau #{selectedCandidate.idx}
                     </p>
                   </div>
+                  <p className="text-xs text-zinc-500 mt-6">
+                    Repeat: {editorSettings.repeat}, Simetri:{" "}
+                    {editorSettings.symmetry}, Kepadatan:{" "}
+                    {editorSettings.density}, Ketebalan:{" "}
+                    {editorSettings.thickness}
+                  </p>
                 </div>
               ) : candidates.length > 0 ? (
                 <ResultsDisplay
@@ -230,7 +260,9 @@ export default function StudioPage() {
                     onGenerationComplete={handleGenerationComplete}
                   />
                 ) : (
-                  <ImageUploadForm />
+                  <ImageUploadForm
+                    onGenerationComplete={handleGenerationComplete}
+                  />
                 )}
               </TabsContent>
 
@@ -238,49 +270,16 @@ export default function StudioPage() {
                 value="edit"
                 className="flex-1 overflow-y-auto mt-4 pr-2"
               >
-                <div className="space-y-6">
-                  {!selectedCandidate ? (
-                    <div className="text-center text-sm text-zinc-500 pt-10">
-                      Pilih salah satu kandidat dari kanvas untuk mulai
-                      mengedit.
-                    </div>
-                  ) : (
-                    <Card className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-                      <CardContent className="pt-6 space-y-4">
-                        <p className="text-sm font-semibold">
-                          Mengedit Kandidat #{selectedCandidate.idx}
-                        </p>
-                        <div className="space-y-2">
-                          <Label>Repeat</Label>
-                          <Select defaultValue="square">
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="square">Square</SelectItem>
-                              <SelectItem value="half-drop">
-                                Half-Drop
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Simetri</Label>
-                          <Select defaultValue="4">
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="2">2-Point</SelectItem>
-                              <SelectItem value="4">4-Point</SelectItem>
-                              <SelectItem value="8">8-Point</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                {!selectedCandidate ? (
+                  <div className="text-center text-sm text-zinc-500 pt-10">
+                    Pilih salah satu kandidat dari kanvas untuk mulai mengedit.
+                  </div>
+                ) : (
+                  <EditorPanel
+                    settings={editorSettings}
+                    onSettingsChange={handleSettingsChange}
+                  />
+                )}
               </TabsContent>
             </Tabs>
           </aside>

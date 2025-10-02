@@ -1,37 +1,70 @@
 import { NextResponse } from "next/server";
+import {
+  BedrockRuntimeClient,
+  InvokeModelCommand,
+} from "@aws-sdk/client-bedrock-runtime";
 
-// Handler untuk metode POST
+const client = new BedrockRuntimeClient({
+  region: process.env.AWS_REGION || "us-east-1",
+});
+
+const modelId = "amazon.titan-image-generator-v1";
+
 export async function POST(request: Request) {
   try {
-    // 1. Mengambil data yang dikirim dari form di frontend
     const body = await request.json();
     const { prompt, family, style, palette } = body;
 
-    // Log data yang diterima untuk debugging
-    console.log("Data diterima di API:", { prompt, family, style, palette });
+    const fullPrompt = `A seamless tile of Indonesian Batik pattern, ${family} family, ${style} style, ${palette} color palette. Detailed, clean lines, vector art style. ${prompt}`;
 
-    // --- (CATATAN) ---
-    // Di sinilah nanti kita akan memanggil Amazon Bedrock.
-    // Untuk sekarang, kita akan mensimulasikan prosesnya.
+    console.log("Mengirim prompt ke Bedrock:", fullPrompt);
 
-    // 2. Simulasi penundaan (delay) seolah-olah sedang memproses
-    await new Promise((resolve) => setTimeout(resolve, 2000)); // Delay 2 detik
-
-    // 3. Membuat respons palsu (mock response) sesuai PRD
-    const mockResponse = {
-      jobId: `job_${Date.now()}`,
-      candidates: [
-        { s3KeyPng: "mock/candidate_1.png", idx: 1 },
-        { s3KeyPng: "mock/candidate_2.png", idx: 2 },
-        { s3KeyPng: "mock/candidate_3.png", idx: 3 },
-      ],
+    const payload = {
+      taskType: "TEXT_IMAGE",
+      textToImageParams: { text: fullPrompt },
+      imageGenerationConfig: {
+        numberOfImages: 3,
+        quality: "standard",
+        width: 1024,
+        height: 1024,
+        cfgScale: 8.0,
+        seed: Math.floor(Math.random() * 2147483647),
+      },
     };
 
-    // 4. Mengirimkan respons kembali ke frontend
-    return NextResponse.json(mockResponse);
+    const command = new InvokeModelCommand({
+      body: JSON.stringify(payload),
+      modelId: modelId,
+      contentType: "application/json",
+      accept: "application/json",
+    });
+
+    const apiResponse = await client.send(command);
+
+    const decodedResponseBody = new TextDecoder().decode(apiResponse.body);
+    const responseBody = JSON.parse(decodedResponseBody);
+    const base64Images = responseBody.images;
+
+    console.log(
+      `Berhasil menerima ${base64Images.length} gambar dari Bedrock.`
+    );
+
+    // --- PERUBAHAN UTAMA DI SINI ---
+    // Hapus mockResponse dan buat realResponse yang berisi data base64
+    const realResponse = {
+      jobId: `job_${Date.now()}`,
+      candidates: base64Images.map((base64Data: string, index: number) => ({
+        base64: base64Data, // Kirim data base64 asli
+        idx: index + 1,
+      })),
+    };
+
+    // Kirim respons yang berisi data gambar asli ke frontend
+    return NextResponse.json(realResponse);
   } catch (error) {
-    console.error("Error di API generate-batik:", error);
-    // Mengirimkan respons error jika terjadi masalah
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error("Error saat memanggil Amazon Bedrock:", error);
+    return new NextResponse("Error communicating with Bedrock", {
+      status: 500,
+    });
   }
 }
