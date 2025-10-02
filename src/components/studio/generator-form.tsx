@@ -19,8 +19,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Paintbrush, Wand2, LoaderCircle } from "lucide-react";
+import { useLoadingMessage } from "@/hooks/useLoadingMessage";
 
-// Definisikan tipe untuk data form
 type FormData = {
   prompt: string;
   family: string;
@@ -28,13 +28,11 @@ type FormData = {
   palette: string;
 };
 
-// Definisikan tipe untuk kandidat
 type Candidate = {
-  base64: string;
+  imageUrl: string;
   idx: number;
 };
 
-// Definisikan props untuk komponen, termasuk fungsi callback
 type GeneratorFormProps = {
   onGenerationComplete: (candidates: Candidate[]) => void;
 };
@@ -47,6 +45,7 @@ export function GeneratorForm({ onGenerationComplete }: GeneratorFormProps) {
     palette: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const loadingMessage = useLoadingMessage(isLoading);
 
   const handleInputChange = (name: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -75,7 +74,7 @@ export function GeneratorForm({ onGenerationComplete }: GeneratorFormProps) {
       onGenerationComplete(result.candidates);
     } catch (error) {
       console.error("Gagal mengirim data ke API:", error);
-      alert("Terjadi kesalahan saat generate. Coba lagi."); // Beri feedback error ke user
+      alert("Terjadi kesalahan saat generate. Coba lagi.");
     } finally {
       setIsLoading(false);
     }
@@ -174,6 +173,11 @@ export function GeneratorForm({ onGenerationComplete }: GeneratorFormProps) {
             )}
             {isLoading ? "Memproses..." : "Generate Motif"}
           </Button>
+          {isLoading && (
+            <p className="text-center text-xs text-muted-foreground mt-2 animate-in fade-in">
+              {loadingMessage}
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>

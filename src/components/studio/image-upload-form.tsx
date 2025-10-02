@@ -12,14 +12,13 @@ import {
 import { Label } from "@/components/ui/label";
 import { FileUp, Wand2, X, LoaderCircle } from "lucide-react";
 import Image from "next/image";
+import { useLoadingMessage } from "@/hooks/useLoadingMessage";
 
-// Definisikan tipe data yang akan diterima & dikirim
 type Candidate = {
-  base64: string;
+  imageUrl: string;
   idx: number;
 };
 
-// Definisikan props untuk komponen agar bisa berkomunikasi dengan parent
 type ImageUploadFormProps = {
   onGenerationComplete: (candidates: Candidate[]) => void;
 };
@@ -27,15 +26,13 @@ type ImageUploadFormProps = {
 export function ImageUploadForm({
   onGenerationComplete,
 }: ImageUploadFormProps) {
-  // State untuk menyimpan file, URL pratinjau, dan status loading
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const loadingMessage = useLoadingMessage(isLoading);
 
-  // Ref untuk mengakses input file yang tersembunyi
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fungsi untuk menangani perubahan saat file dipilih (baik via klik atau drop)
   const processFile = (selectedFile: File | undefined) => {
     if (
       selectedFile &&
@@ -44,7 +41,6 @@ export function ImageUploadForm({
       setFile(selectedFile);
       setPreviewUrl(URL.createObjectURL(selectedFile));
     } else {
-      // Nanti kita bisa ganti ini dengan notifikasi toast
       alert("Silakan pilih file gambar (PNG atau JPG).");
     }
   };
@@ -53,7 +49,6 @@ export function ImageUploadForm({
     processFile(event.target.files?.[0]);
   };
 
-  // Fungsi untuk event drag-and-drop
   const handleDragOver = (event: DragEvent<HTMLDivElement>) =>
     event.preventDefault();
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -61,7 +56,6 @@ export function ImageUploadForm({
     processFile(event.dataTransfer.files?.[0]);
   };
 
-  // Fungsi untuk menghapus file yang sudah dipilih
   const clearFile = () => {
     setFile(null);
     if (previewUrl) {
@@ -73,7 +67,6 @@ export function ImageUploadForm({
     }
   };
 
-  // Fungsi untuk menangani pengiriman form ke API
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!file) return;
@@ -171,8 +164,13 @@ export function ImageUploadForm({
             ) : (
               <Wand2 className="w-4 h-4 mr-2" />
             )}
-            {isLoading ? "Memproses..." : "Generate Variasi"}
+            {isLoading ? "Memproses..." : "Generate Motif"}
           </Button>
+          {isLoading && (
+            <p className="text-center text-xs text-muted-foreground mt-2 animate-in fade-in">
+              {loadingMessage}
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>

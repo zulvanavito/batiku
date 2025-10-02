@@ -35,7 +35,7 @@ import {
 
 // Definisikan tipe data untuk kandidat
 type Candidate = {
-  base64: string;
+  imageUrl: string; // Bukan lagi base64 atau s3KeyPng
   idx: number;
 };
 
@@ -93,7 +93,10 @@ export default function StudioPage() {
     const exportPromise = fetch("/api/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ base64: selectedCandidate.base64 }),
+      body: JSON.stringify({
+        imageUrl: selectedCandidate.imageUrl,
+        settings: editorSettings,
+      }),
     })
       .then(async (response) => {
         if (!response.ok) throw new Error("Gagal memulai proses ekspor.");
@@ -197,22 +200,22 @@ export default function StudioPage() {
                       <X className="w-4 h-4 mr-2" /> Batal Pilih
                     </Button>
                   </div>
-                  <div className="w-2/3 h-2/3 bg-zinc-100 dark:bg-zinc-900 rounded-md flex items-center justify-center overflow-hidden">
-                    <p
-                      className={`text-zinc-500 transition-transform duration-300 
-                      ${editorSettings.symmetry === "2" ? "scale-x-[-1]" : ""}
-                      ${editorSettings.symmetry === "4" ? "rotate-90" : ""}
-                      ${
-                        editorSettings.symmetry === "8"
-                          ? "rotate-180 scale-x-[-1]"
-                          : ""
-                      }
-                    `}
-                    >
-                      Pratinjau #{selectedCandidate.idx}
-                    </p>
+                  {/* Ganti <p> dengan <Image> */}
+                  <div className="w-2/3 h-2/3 relative rounded-md flex items-center justify-center overflow-hidden">
+                    <Image
+                      src={selectedCandidate.imageUrl}
+                      alt={`Pratinjau Kandidat #${selectedCandidate.idx}`}
+                      layout="fill"
+                      objectFit="contain"
+                      unoptimized
+                      className={`transition-transform duration-300
+    ${editorSettings.symmetry === "2" ? "scale-x-[-1]" : ""}
+    ${editorSettings.symmetry === "4" ? "rotate-90" : ""}
+    ${editorSettings.symmetry === "8" ? "rotate-180 scale-x-[-1]" : ""}
+  `}
+                    />
                   </div>
-                  <p className="text-xs text-zinc-500 mt-6">
+                  <p className="text-xs text-zinc-500 mt-2">
                     Repeat: {editorSettings.repeat}, Simetri:{" "}
                     {editorSettings.symmetry}, Kepadatan:{" "}
                     {editorSettings.density}, Ketebalan:{" "}
