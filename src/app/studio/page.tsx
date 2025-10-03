@@ -10,16 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Download,
-  FileImage,
-  Home,
-  Palette,
-  Type,
-  Wand2,
-  X,
-  LoaderCircle,
-} from "lucide-react";
+import { FileImage, Home, Palette, Type, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { toast, Toaster } from "sonner";
@@ -32,49 +23,50 @@ import {
   EditorPanel,
   type EditorSettings,
 } from "@/components/studio/editor-panel";
+import {
+  MockupToolbar,
+  type MockupMode,
+} from "@/components/studio/mockup-toolbar";
 
-// Definisikan tipe data untuk kandidat
 type Candidate = {
-  imageUrl: string; // Bukan lagi base64 atau s3KeyPng
+  imageUrl: string;
   idx: number;
 };
 
 export default function StudioPage() {
-  // State management untuk seluruh halaman studio
+  // State management
   const [activeMode, setActiveMode] = useState<"text" | "image">("text");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
     null
   );
   const [activeTab, setActiveTab] = useState("generate");
-  const [isExporting, setIsExporting] = useState(false);
   const [editorSettings, setEditorSettings] = useState<EditorSettings>({
     repeat: "square",
     symmetry: "none",
     density: 50,
     thickness: 1.5,
   });
+  const [mockupMode, setMockupMode] = useState<MockupMode>("tile");
 
-  // Handler saat proses 'generate' selesai
+  // Handlers
   const handleGenerationComplete = (results: Candidate[]) => {
     setCandidates(results);
     setSelectedCandidate(null);
     setActiveTab("generate");
   };
 
-  // Handler saat pengguna memilih salah satu kandidat
   const handleSelectCandidate = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
+    setMockupMode("tile");
     toast.success(`Kandidat #${candidate.idx} dipilih!`);
     setActiveTab("edit");
   };
 
-  // Handler untuk membatalkan pilihan kandidat
   const clearSelection = () => {
     setSelectedCandidate(null);
   };
 
-  // Handler untuk mengubah pengaturan di editor panel
   const handleSettingsChange = <K extends keyof EditorSettings>(
     key: K,
     value: EditorSettings[K]
@@ -82,38 +74,7 @@ export default function StudioPage() {
     setEditorSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  // Handler untuk tombol ekspor
-  const handleExport = () => {
-    if (!selectedCandidate) {
-      toast.error("Silakan pilih salah satu kandidat terlebih dahulu.");
-      return;
-    }
-
-    setIsExporting(true);
-    const exportPromise = fetch("/api/export", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        imageUrl: selectedCandidate.imageUrl,
-        settings: editorSettings,
-      }),
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Gagal memulai proses ekspor.");
-        const result = await response.json();
-        window.open(result.downloadUrl, "_blank");
-        return result;
-      })
-      .finally(() => {
-        setIsExporting(false);
-      });
-
-    toast.promise(exportPromise, {
-      loading: "Memulai proses ekspor...",
-      success: "Ekspor berhasil! File ZIP akan segera diunduh.",
-      error: "Terjadi kesalahan saat mengekspor.",
-    });
-  };
+  // LOGIKA EKSPOR YANG BERMASALAH SUDAH DIHAPUS TOTAL
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -134,17 +95,8 @@ export default function StudioPage() {
               / Studio
             </h1>
           </div>
-          <Button
-            size="sm"
-            onClick={handleExport}
-            disabled={!selectedCandidate || isExporting}
-          >
-            {isExporting ? (
-              <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4 mr-2" />
-            )}
-            Ekspor
+          <Button size="sm" disabled>
+            Ekspor (Segera Hadir)
           </Button>
         </header>
 
@@ -191,36 +143,63 @@ export default function StudioPage() {
             </nav>
           </aside>
 
-          <main className="flex-1 flex items-center justify-center p-4 lg:p-8">
-            <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200 p-4">
+          <main className="flex-1 flex items-center justify-center p-4 lg:p-8 relative">
+            <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200  flex items-center justify-center p-4 overflow-hidden">
               {selectedCandidate ? (
-                <div className="w-full h-full flex flex-col items-center justify-center relative">
-                  <div className="absolute top-0 right-0 p-2">
+                <div className="w-full h-full relative">
+                  <div className="absolute top-0 right-0 p-2 z-20">
                     <Button variant="ghost" size="sm" onClick={clearSelection}>
                       <X className="w-4 h-4 mr-2" /> Batal Pilih
                     </Button>
                   </div>
-                  {/* Ganti <p> dengan <Image> */}
-                  <div className="w-2/3 h-2/3 relative rounded-md flex items-center justify-center overflow-hidden">
-                    <Image
-                      src={selectedCandidate.imageUrl}
-                      alt={`Pratinjau Kandidat #${selectedCandidate.idx}`}
-                      layout="fill"
-                      objectFit="contain"
-                      unoptimized
-                      className={`transition-transform duration-300
-    ${editorSettings.symmetry === "2" ? "scale-x-[-1]" : ""}
-    ${editorSettings.symmetry === "4" ? "rotate-90" : ""}
-    ${editorSettings.symmetry === "8" ? "rotate-180 scale-x-[-1]" : ""}
-  `}
+                  {mockupMode === "shirt" && (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <svg viewBox="0 0 320 320" className="w-full h-full">
+                        <defs>
+                          <pattern
+                            id="batikPattern"
+                            patternUnits="userSpaceOnUse"
+                            width="150"
+                            height="150"
+                          >
+                            <image
+                              href={selectedCandidate.imageUrl}
+                              x="0"
+                              y="0"
+                              width="150"
+                              height="150"
+                            />
+                          </pattern>
+                        </defs>
+                        <path
+                          fill="url(#batikPattern)"
+                          d="M106.3,32.4c-4.7-0.1-8.5,3.7-8.6,8.4V62c0,0-15.3,4.3-19.6,12.7c-4.3,8.4,1.1,16.8-1.1,23.3c-2.2,6.5-12.8,12.7-12.8,12.7l-47,38.2L16,280.4h288l-1.3-131.5l-47-38.2c0,0-10.7-6.2-12.8-12.7c-2.2-6.5,3.2-14.9-1.1-23.3c-4.3-8.4-19.6-12.7-19.6-12.7V40.8c-0.1-4.7-3.9-8.5-8.6-8.4H106.3z"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                  {mockupMode === "fabric" && (
+                    <div
+                      className="w-full h-full"
+                      style={{
+                        backgroundImage: `url(${selectedCandidate.imageUrl})`,
+                        backgroundSize: "150px 150px",
+                      }}
                     />
-                  </div>
-                  <p className="text-xs text-zinc-500 mt-2">
-                    Repeat: {editorSettings.repeat}, Simetri:{" "}
-                    {editorSettings.symmetry}, Kepadatan:{" "}
-                    {editorSettings.density}, Ketebalan:{" "}
-                    {editorSettings.thickness}
-                  </p>
+                  )}
+                  {mockupMode === "tile" && (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-2/3 h-2/3 relative">
+                        <Image
+                          src={selectedCandidate.imageUrl}
+                          alt="Pratinjau Ubin"
+                          layout="fill"
+                          objectFit="contain"
+                          unoptimized
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : candidates.length > 0 ? (
                 <ResultsDisplay
@@ -235,6 +214,12 @@ export default function StudioPage() {
                 </div>
               )}
             </div>
+            {selectedCandidate && (
+              <MockupToolbar
+                activeMode={mockupMode}
+                onModeChange={setMockupMode}
+              />
+            )}
           </main>
 
           <aside className="hidden lg:flex lg:w-80 flex-col border-l bg-white dark:bg-black p-4">
@@ -253,7 +238,6 @@ export default function StudioPage() {
                   Editor
                 </TabsTrigger>
               </TabsList>
-
               <TabsContent
                 value="generate"
                 className="flex-1 overflow-y-auto mt-4 pr-2"
@@ -268,14 +252,13 @@ export default function StudioPage() {
                   />
                 )}
               </TabsContent>
-
               <TabsContent
                 value="edit"
                 className="flex-1 overflow-y-auto mt-4 pr-2"
               >
                 {!selectedCandidate ? (
                   <div className="text-center text-sm text-zinc-500 pt-10">
-                    Pilih salah satu kandidat dari kanvas untuk mulai mengedit.
+                    Pilih salah satu kandidat untuk mulai mengedit.
                   </div>
                 ) : (
                   <EditorPanel
