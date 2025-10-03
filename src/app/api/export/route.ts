@@ -1,45 +1,24 @@
+// route.ts - Final Export (MVP)
 import { NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import axios from "axios";
-import jszip from "jszip";
-import ImageTracer from "imagetracerjs";
-import { createCanvas, loadImage } from "canvas";
+import JSZip from "jszip";
+import sharp from "sharp"; // Menggunakan sharp untuk image processing
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || "us-east-1",
 });
 
+const sqsClient = new SQSClient({
+  region: process.env.AWS_REGION || "us-east-1",
+});
+
 const bucketName = process.env.AWS_S3_BUCKET_NAME;
-
-// Fungsi traceImage yang menggunakan 'imagetracerjs'
-async function traceImage(buffer: Buffer): Promise<string> {
-  // 1. Muat gambar mentah (buffer) ke dalam sebuah objek gambar 'canvas'
-  const image = await loadImage(buffer);
-
-  // 2. Buat kanvas virtual seukuran gambar
-  const canvas = createCanvas(image.width, image.height);
-  const ctx = canvas.getContext("2d");
-
-  // 3. Gambar citra tersebut ke kanvas
-  ctx.drawImage(image, 0, 0);
-
-  // 4. Ambil data piksel dari kanvas
-  const imageData = ctx.getImageData(0, 0, image.width, image.height);
-
-  // 5. Lakukan proses tracing pada data piksel
-  const svgContent = ImageTracer.imageToSVG(imageData, {
-    ltres: 1,
-    qtres: 1,
-    pathomit: 8,
-    scale: 1,
-  });
-
-  return svgContent;
-}
+const vectorizeQueueUrl = process.env.VECTORIZE_QUEUE_URL;
 
 export async function POST(request: Request) {
   if (!bucketName) {
-    console.error("Error: AWS_S3_BUCKET_NAME belum diatur.");
     return new NextResponse("Konfigurasi server tidak lengkap", {
       status: 500,
     });
@@ -47,7 +26,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { imageUrl, settings } = body;
+    const { imageUrl, settings, rapportCm = 25 } = body;
 
     if (!imageUrl) {
       return new NextResponse("Bad Request: imageUrl is required", {
@@ -58,53 +37,108 @@ export async function POST(request: Request) {
     console.log(`Memulai proses ekspor untuk: ${imageUrl}`);
     console.log("Dengan pengaturan:", settings);
 
-    // Unduh gambar dari S3
+    // 1. Download image
     const imageResponse = await axios.get(imageUrl, {
       responseType: "arraybuffer",
     });
     const pngBuffer = Buffer.from(imageResponse.data);
 
-    // Panggil fungsi traceImage yang sudah benar
-    const svgContent = await traceImage(pngBuffer);
+    // 2. Process dengan Sharp (resize ke 300 DPI)
+    const targetPx = rapportCm === 20 ? 2362 : 2953;
 
-    // Buat file metadata
-    const metadataContent = JSON.stringify(
-      {
-        sourceImage: imageUrl,
-        createdAt: new Date().toISOString(),
-        editorSettings: settings,
-      },
-      null,
-      2
+    const processedPng = await sharp(pngBuffer)
+      .resize(targetPx, targetPx, {
+        fit: "cover",
+        kernel: "lanczos3",
+      })
+      .png({ quality: 100, compressionLevel: 9 })
+      .withMetadata({
+        density: 300,
+      })
+      .toBuffer();
+
+    // 3. Buat metadata
+    const metadata = {
+      sourceImage: imageUrl,
+      createdAt: new Date().toISOString(),
+      editorSettings: settings,
+      rapport_cm: rapportCm,
+      resolution: `${targetPx}x${targetPx}`,
+      dpi: 300,
+      format: "PNG",
+      version: "1.0",
+    };
+
+    // 4. Buat nama file standar & buat file ZIP
+    const now = new Date();
+    const dateString = now.toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
+    const timeString = now.toTimeString().slice(0, 8).replace(/:/g, ""); // HHMMSS
+    const motifFamily = settings?.family || "batik";
+    const baseName = `batiku-export-${motifFamily}-${dateString}-${timeString}`;
+
+    const zip = new JSZip();
+    zip.file(`${baseName}.png`, processedPng);
+    zip.file("metadata.json", JSON.stringify(metadata, null, 2));
+    zip.file("README.txt", "File SVG sedang diproses secara terpisah.");
+
+    const zipBuffer = await zip.generateAsync({
+      type: "nodebuffer",
+      compression: "DEFLATE",
+      compressionOptions: { level: 9 },
+    });
+
+    // Hitung ukuran file ZIP untuk dikirim ke frontend
+    const zipSizeBytes = zipBuffer.length;
+
+    // 5. Upload ZIP ke S3
+    const zipKey = `exports/${baseName}.zip`;
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: zipKey,
+        Body: zipBuffer,
+        ContentType: "application/zip",
+      })
     );
 
-    // Buat file ZIP
-    const zip = new jszip();
-    const baseName = imageUrl.split("/").pop()?.replace(".png", "") || "batik";
+    // 6. Kirim job vectorization ke SQS (jika dikonfigurasi)
+    if (vectorizeQueueUrl) {
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: vectorizeQueueUrl,
+          MessageBody: JSON.stringify({
+            imageUrl,
+            zipKey,
+            baseName,
+            settings,
+          }),
+        })
+      );
+      console.log("Vectorization job queued");
+    }
 
-    zip.file(`${baseName}.png`, pngBuffer);
-    zip.file(`${baseName}.svg`, svgContent);
-    zip.file("metadata.json", metadataContent);
-
-    const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-
-    // Unggah ZIP ke S3
-    const zipKey = `exports/${baseName}-${Date.now()}.zip`;
-    const putObjectCommand = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: zipKey,
-      Body: zipBuffer,
-      ContentType: "application/zip",
-    });
-    await s3Client.send(putObjectCommand);
-
+    // 7. Buat URL download
     const downloadUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${zipKey}`;
 
-    console.log(`Proses ekspor selesai. URL Download: ${downloadUrl}`);
+    console.log(`Ekspor selesai. URL: ${downloadUrl}`);
 
-    return NextResponse.json({ downloadUrl });
+    // 8. Kirim respons lengkap ke frontend
+    return NextResponse.json({
+      downloadUrl,
+      zipKey,
+      zipSizeBytes, // Sertakan ukuran file di sini
+      status: "success",
+      message: "PNG ready. SVG processing in background.",
+      metadata,
+    });
   } catch (error) {
     console.error("Error di API export:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return new NextResponse(
+      JSON.stringify({
+        error: "Internal Server Error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
