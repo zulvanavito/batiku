@@ -10,7 +10,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FileImage, Home, Palette, Type, Wand2, X } from "lucide-react";
+import {
+  FileImage,
+  Home,
+  Palette,
+  Type,
+  Wand2,
+  X,
+  Download,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { toast, Toaster } from "sonner";
@@ -49,6 +58,10 @@ export default function StudioPage() {
   });
   const [mockupMode, setMockupMode] = useState<MockupMode>("tile");
 
+  // Export states
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<string>("");
+
   // Handlers
   const handleGenerationComplete = (results: Candidate[]) => {
     setCandidates(results);
@@ -74,12 +87,88 @@ export default function StudioPage() {
     setEditorSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  // LOGIKA EKSPOR YANG BERMASALAH SUDAH DIHAPUS TOTAL
+  // 🔥 LOGIKA EKSPOR YANG BARU
+  const handleExport = async () => {
+    if (!selectedCandidate) {
+      toast.error("Pilih kandidat terlebih dahulu!");
+      return;
+    }
+
+    setIsExporting(true);
+    setExportProgress("Memulai proses ekspor...");
+
+    try {
+      // Step 1: Kirim request ke API
+      setExportProgress("Memproses gambar...");
+
+      const response = await fetch("/api/export", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrl: selectedCandidate.imageUrl,
+          settings: editorSettings,
+          rapportCm: 25,
+          designId: `design-${Date.now()}`,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || "Gagal mengekspor");
+      }
+
+      const data = await response.json();
+
+      // Step 2: Download file
+      setExportProgress("Mengunduh file...");
+
+      // Auto download menggunakan anchor tag
+      const link = document.createElement("a");
+      link.href = data.downloadUrl;
+      link.download = data.metadata.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Step 3: Success
+      toast.success(
+        <div className="space-y-1">
+          <p className="font-semibold">Ekspor berhasil!</p>
+          <p className="text-xs text-zinc-500">
+            File: {data.metadata.fileName}
+          </p>
+          <p className="text-xs text-zinc-500">
+            Ukuran: {(data.metadata.fileSize / 1024 / 1024).toFixed(2)} MB
+          </p>
+        </div>
+      );
+
+      setExportProgress("");
+    } catch (error) {
+      console.error("Error saat ekspor:", error);
+
+      toast.error(
+        <div className="space-y-1">
+          <p className="font-semibold">Ekspor gagal</p>
+          <p className="text-xs text-zinc-500">
+            {error instanceof Error ? error.message : "Terjadi kesalahan"}
+          </p>
+        </div>
+      );
+
+      setExportProgress("");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
       <Toaster position="top-center" richColors />
       <div className="min-h-screen w-full bg-zinc-100 dark:bg-zinc-900 text-foreground flex flex-col">
+        {/* Header dengan tombol ekspor yang berfungsi */}
         <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b bg-white dark:bg-black dark:border-zinc-800/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -95,12 +184,30 @@ export default function StudioPage() {
               / Studio
             </h1>
           </div>
-          <Button size="sm" disabled>
-            Ekspor (Segera Hadir)
+
+          {/* Tombol Ekspor dengan logic */}
+          <Button
+            size="sm"
+            onClick={handleExport}
+            disabled={!selectedCandidate || isExporting}
+            className="gap-2"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {exportProgress || "Memproses..."}
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Ekspor
+              </>
+            )}
           </Button>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar Kiri */}
           <aside className="inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-white dark:bg-black sm:flex">
             <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
               <Tooltip>
@@ -143,8 +250,9 @@ export default function StudioPage() {
             </nav>
           </aside>
 
+          {/* Main Canvas Area */}
           <main className="flex-1 flex items-center justify-center p-4 lg:p-8 relative">
-            <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200  flex items-center justify-center p-4 overflow-hidden">
+            <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200 flex items-center justify-center p-4 overflow-hidden">
               {selectedCandidate ? (
                 <div className="w-full h-full relative">
                   <div className="absolute top-0 right-0 p-2 z-20">
@@ -152,6 +260,8 @@ export default function StudioPage() {
                       <X className="w-4 h-4 mr-2" /> Batal Pilih
                     </Button>
                   </div>
+
+                  {/* Mockup Shirt */}
                   {mockupMode === "shirt" && (
                     <div className="w-full h-full flex items-center justify-center">
                       <svg viewBox="0 0 320 320" className="w-full h-full">
@@ -178,6 +288,8 @@ export default function StudioPage() {
                       </svg>
                     </div>
                   )}
+
+                  {/* Mockup Fabric */}
                   {mockupMode === "fabric" && (
                     <div
                       className="w-full h-full"
@@ -187,6 +299,8 @@ export default function StudioPage() {
                       }}
                     />
                   )}
+
+                  {/* Mockup Single Tile */}
                   {mockupMode === "tile" && (
                     <div className="w-full h-full flex items-center justify-center">
                       <div className="w-2/3 h-2/3 relative">
@@ -214,6 +328,8 @@ export default function StudioPage() {
                 </div>
               )}
             </div>
+
+            {/* Mockup Toolbar */}
             {selectedCandidate && (
               <MockupToolbar
                 activeMode={mockupMode}
@@ -222,6 +338,7 @@ export default function StudioPage() {
             )}
           </main>
 
+          {/* Right Sidebar - Generator & Editor */}
           <aside className="hidden lg:flex lg:w-80 flex-col border-l bg-white dark:bg-black p-4">
             <Tabs
               value={activeTab}
@@ -238,6 +355,7 @@ export default function StudioPage() {
                   Editor
                 </TabsTrigger>
               </TabsList>
+
               <TabsContent
                 value="generate"
                 className="flex-1 overflow-y-auto mt-4 pr-2"
@@ -252,6 +370,7 @@ export default function StudioPage() {
                   />
                 )}
               </TabsContent>
+
               <TabsContent
                 value="edit"
                 className="flex-1 overflow-y-auto mt-4 pr-2"
