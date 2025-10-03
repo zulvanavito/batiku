@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import axios from "axios";
 import jszip from "jszip";
-// --- PERBAIKAN 1: Ubah cara import Potrace ---
-import * as Potrace from "potrace";
+import ImageTracer from "imagetracerjs";
+import { createCanvas, loadImage } from "canvas";
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || "us-east-1",
@@ -11,21 +11,35 @@ const s3Client = new S3Client({
 
 const bucketName = process.env.AWS_S3_BUCKET_NAME;
 
-function traceImage(buffer: Buffer): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // --- PERBAIKAN 2: Gunakan Potrace sebagai constructor ---
-    const trace = new Potrace.Potrace();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    trace.loadImage(buffer, (err: any) => {
-      if (err) return reject(err);
-      resolve(trace.getSVG());
-    });
+// Fungsi traceImage yang menggunakan 'imagetracerjs'
+async function traceImage(buffer: Buffer): Promise<string> {
+  // 1. Muat gambar mentah (buffer) ke dalam sebuah objek gambar 'canvas'
+  const image = await loadImage(buffer);
+
+  // 2. Buat kanvas virtual seukuran gambar
+  const canvas = createCanvas(image.width, image.height);
+  const ctx = canvas.getContext("2d");
+
+  // 3. Gambar citra tersebut ke kanvas
+  ctx.drawImage(image, 0, 0);
+
+  // 4. Ambil data piksel dari kanvas
+  const imageData = ctx.getImageData(0, 0, image.width, image.height);
+
+  // 5. Lakukan proses tracing pada data piksel
+  const svgContent = ImageTracer.imageToSVG(imageData, {
+    ltres: 1,
+    qtres: 1,
+    pathomit: 8,
+    scale: 1,
   });
+
+  return svgContent;
 }
 
 export async function POST(request: Request) {
   if (!bucketName) {
-    console.error("Error: Nama S3 Bucket (AWS_S3_BUCKET_NAME) belum diatur.");
+    console.error("Error: AWS_S3_BUCKET_NAME belum diatur.");
     return new NextResponse("Konfigurasi server tidak lengkap", {
       status: 500,
     });
@@ -44,13 +58,16 @@ export async function POST(request: Request) {
     console.log(`Memulai proses ekspor untuk: ${imageUrl}`);
     console.log("Dengan pengaturan:", settings);
 
+    // Unduh gambar dari S3
     const imageResponse = await axios.get(imageUrl, {
       responseType: "arraybuffer",
     });
     const pngBuffer = Buffer.from(imageResponse.data);
 
+    // Panggil fungsi traceImage yang sudah benar
     const svgContent = await traceImage(pngBuffer);
 
+    // Buat file metadata
     const metadataContent = JSON.stringify(
       {
         sourceImage: imageUrl,
@@ -61,9 +78,9 @@ export async function POST(request: Request) {
       2
     );
 
+    // Buat file ZIP
     const zip = new jszip();
-    const originalFileName = imageUrl.split("/").pop() || "batik.png";
-    const baseName = originalFileName.replace(".png", "");
+    const baseName = imageUrl.split("/").pop()?.replace(".png", "") || "batik";
 
     zip.file(`${baseName}.png`, pngBuffer);
     zip.file(`${baseName}.svg`, svgContent);
@@ -71,6 +88,7 @@ export async function POST(request: Request) {
 
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
 
+    // Unggah ZIP ke S3
     const zipKey = `exports/${baseName}-${Date.now()}.zip`;
     const putObjectCommand = new PutObjectCommand({
       Bucket: bucketName,
@@ -78,7 +96,6 @@ export async function POST(request: Request) {
       Body: zipBuffer,
       ContentType: "application/zip",
     });
-
     await s3Client.send(putObjectCommand);
 
     const downloadUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${zipKey}`;
