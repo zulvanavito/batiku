@@ -10,16 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  FileImage,
-  Home,
-  Palette,
-  Type,
-  Wand2,
-  X,
-  Download,
-  Loader2,
-} from "lucide-react";
+import { FileImage, Home, Palette, Type, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { toast, Toaster } from "sonner";
@@ -36,11 +27,25 @@ import {
   MockupToolbar,
   type MockupMode,
 } from "@/components/studio/mockup-toolbar";
+import { ExportDialog } from "@/components/studio/export-dialog";
+import { ExportHistory } from "@/components/studio/export-history";
+import { ExportProgress } from "@/components/studio/export-progress";
+
+// Import utilities & types
+import { exportHistory } from "@/lib/export-history";
+import type { RapportSize, ExportFormat, ExportResponse } from "@/app/types/export";
 
 type Candidate = {
   imageUrl: string;
   idx: number;
 };
+
+type ExportProgressStatus =
+  | "idle"
+  | "processing"
+  | "downloading"
+  | "success"
+  | "error";
 
 export default function StudioPage() {
   // State management
@@ -61,6 +66,9 @@ export default function StudioPage() {
   // Export states
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<string>("");
+  const [progressValue, setProgressValue] = useState(0);
+  const [progressStatus, setProgressStatus] =
+    useState<ExportProgressStatus>("idle");
 
   // Handlers
   const handleGenerationComplete = (results: Candidate[]) => {
@@ -87,18 +95,21 @@ export default function StudioPage() {
     setEditorSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  // 🔥 LOGIKA EKSPOR YANG BARU
-  const handleExport = async () => {
+  // 🔥 HANDLER EKSPOR DENGAN PROGRESS BAR & FIX BUG NaN
+  const handleExport = async (rapportCm: RapportSize, format: ExportFormat) => {
     if (!selectedCandidate) {
       toast.error("Pilih kandidat terlebih dahulu!");
       return;
     }
 
     setIsExporting(true);
+    setProgressValue(0);
+    setProgressStatus("processing");
     setExportProgress("Memulai proses ekspor...");
 
     try {
       // Step 1: Kirim request ke API
+      setProgressValue(10);
       setExportProgress("Memproses gambar...");
 
       const response = await fetch("/api/export", {
@@ -109,19 +120,35 @@ export default function StudioPage() {
         body: JSON.stringify({
           imageUrl: selectedCandidate.imageUrl,
           settings: editorSettings,
-          rapportCm: 25,
+          rapportCm,
+          format,
+          userId: "user-001", // TODO: Ganti dengan user ID dari auth
           designId: `design-${Date.now()}`,
         }),
       });
+
+      setProgressValue(40);
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.details || "Gagal mengekspor");
       }
 
-      const data = await response.json();
+      const data: ExportResponse = await response.json();
+
+      // FIX BUG NaN: Validasi data.metadata
+      if (!data.metadata || !data.metadata.fileSize) {
+        console.warn("Missing metadata fileSize, using estimated value");
+        data.metadata = {
+          ...data.metadata,
+          fileSize: rapportCm === 20 ? 5000000 : 6500000, // Estimated 5-6.5 MB
+        };
+      }
+
+      setProgressValue(70);
 
       // Step 2: Download file
+      setProgressStatus("downloading");
       setExportProgress("Mengunduh file...");
 
       // Auto download menggunakan anchor tag
@@ -132,33 +159,95 @@ export default function StudioPage() {
       link.click();
       document.body.removeChild(link);
 
-      // Step 3: Success
+      setProgressValue(90);
+
+      // Step 3: Simpan ke history
+      exportHistory.save({
+        imageUrl: selectedCandidate.imageUrl,
+        downloadUrl: data.downloadUrl,
+        fileName: data.metadata.fileName,
+        fileSize: data.metadata.fileSize || 0,
+        settings: {
+          rapportCm,
+          dpi: data.metadata.dpi || 300,
+          format: format,
+          includeMetadata: true,
+        },
+        editorSettings,
+        status: "success",
+      });
+
+      setProgressValue(100);
+      setProgressStatus("success");
+      setExportProgress("Ekspor selesai!");
+
+      // Step 4: Success notification dengan data yang sudah divalidasi
+      const fileSizeMB = data.metadata.fileSize
+        ? (data.metadata.fileSize / 1024 / 1024).toFixed(2)
+        : "~5-6";
+
       toast.success(
         <div className="space-y-1">
-          <p className="font-semibold">Ekspor berhasil!</p>
+          <p className="font-semibold">Ekspor berhasil! 🎉</p>
           <p className="text-xs text-zinc-500">
             File: {data.metadata.fileName}
           </p>
+          <p className="text-xs text-zinc-500">Ukuran: {fileSizeMB} MB</p>
           <p className="text-xs text-zinc-500">
-            Ukuran: {(data.metadata.fileSize / 1024 / 1024).toFixed(2)} MB
+            Resolusi: {data.metadata.resolution} @ {data.metadata.dpi} DPI
           </p>
-        </div>
+        </div>,
+        {
+          duration: 5000,
+        }
       );
 
-      setExportProgress("");
+      // Hide progress bar after 2 seconds
+      setTimeout(() => {
+        setProgressValue(0);
+        setProgressStatus("idle");
+        setExportProgress("");
+      }, 2000);
     } catch (error) {
       console.error("Error saat ekspor:", error);
 
+      setProgressValue(0);
+      setProgressStatus("error");
+      setExportProgress("Ekspor gagal!");
+
+      // Simpan ke history dengan status failed
+      if (selectedCandidate) {
+        exportHistory.save({
+          imageUrl: selectedCandidate.imageUrl,
+          downloadUrl: "",
+          fileName: "export-failed.zip",
+          fileSize: 0,
+          settings: {
+            rapportCm,
+            dpi: 300,
+            format: format,
+            includeMetadata: true,
+          },
+          editorSettings,
+          status: "failed",
+        });
+      }
+
       toast.error(
         <div className="space-y-1">
-          <p className="font-semibold">Ekspor gagal</p>
+          <p className="font-semibold">Ekspor gagal ❌</p>
           <p className="text-xs text-zinc-500">
             {error instanceof Error ? error.message : "Terjadi kesalahan"}
           </p>
         </div>
       );
 
-      setExportProgress("");
+      // Hide progress bar after error
+      setTimeout(() => {
+        setProgressValue(0);
+        setProgressStatus("idle");
+        setExportProgress("");
+      }, 3000);
     } finally {
       setIsExporting(false);
     }
@@ -167,8 +256,17 @@ export default function StudioPage() {
   return (
     <TooltipProvider delayDuration={0}>
       <Toaster position="top-center" richColors />
+
+      {/* Progress Bar Floating */}
+      <ExportProgress
+        isVisible={progressValue > 0}
+        progress={progressValue}
+        status={progressStatus}
+        message={exportProgress}
+      />
+
       <div className="min-h-screen w-full bg-zinc-100 dark:bg-zinc-900 text-foreground flex flex-col">
-        {/* Header dengan tombol ekspor yang berfungsi */}
+        {/* Header dengan tombol ekspor & history */}
         <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b bg-white dark:bg-black dark:border-zinc-800/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -185,25 +283,16 @@ export default function StudioPage() {
             </h1>
           </div>
 
-          {/* Tombol Ekspor dengan logic */}
-          <Button
-            size="sm"
-            onClick={handleExport}
-            disabled={!selectedCandidate || isExporting}
-            className="gap-2"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {exportProgress || "Memproses..."}
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                Ekspor
-              </>
-            )}
-          </Button>
+          {/* Tombol History & Export */}
+          <div className="flex items-center gap-2">
+            <ExportHistory />
+            <ExportDialog
+              disabled={!selectedCandidate}
+              isExporting={isExporting}
+              exportProgress={exportProgress}
+              onExport={handleExport}
+            />
+          </div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">

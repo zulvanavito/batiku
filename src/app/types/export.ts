@@ -2,10 +2,12 @@
 
 export type RapportSize = 20 | 25;
 
+export type ExportFormat = "png" | "png-svg";
+
 export interface ExportSettings {
   rapportCm: RapportSize;
   dpi: number;
-  format: "PNG" | "PNG+SVG";
+  format: ExportFormat;
   includeMetadata: boolean;
 }
 
