@@ -133,8 +133,6 @@ export default function StudioPage() {
         const errorData = await response.json();
         throw new Error(errorData.details || "Gagal mengekspor");
       }
-      return response.json();
-    });
 
       const data: ExportResponse = await response.json();
 
