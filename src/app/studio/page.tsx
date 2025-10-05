@@ -36,6 +36,7 @@ import {
   MockupToolbar,
   type MockupMode,
 } from "@/components/studio/mockup-toolbar";
+import { ExportResponse } from "../types/export";
 
 type Candidate = {
   imageUrl: string;
@@ -88,80 +89,65 @@ export default function StudioPage() {
   };
 
   // 🔥 LOGIKA EKSPOR YANG BARU
-  const handleExport = async () => {
+  const handleExport = () => {
     if (!selectedCandidate) {
       toast.error("Pilih kandidat terlebih dahulu!");
       return;
     }
 
     setIsExporting(true);
-    setExportProgress("Memulai proses ekspor...");
 
-    try {
-      // Step 1: Kirim request ke API
-      setExportProgress("Memproses gambar...");
-
-      const response = await fetch("/api/export", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          imageUrl: selectedCandidate.imageUrl,
-          settings: editorSettings,
-          rapportCm: 25,
-          designId: `design-${Date.now()}`,
-        }),
-      });
-
+    // Definisikan promise di sini
+    const exportPromise: Promise<ExportResponse> = fetch("/api/export", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        imageUrl: selectedCandidate.imageUrl,
+        settings: editorSettings,
+        rapportCm: 25,
+        designId: `design-${Date.now()}`,
+      }),
+    }).then(async (response) => {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.details || "Gagal mengekspor");
       }
+      return response.json();
+    });
 
-      const data = await response.json();
+    // Gunakan promise tersebut di dalam toast
+    toast.promise(exportPromise, {
+      loading: "Memulai proses ekspor...",
+      success: (data) => {
+        // 'data' di sini adalah hasil dari promise (respons API)
+        const fileSizeMB = (data.metadata.fileSize / 1024 / 1024).toFixed(2);
 
-      // Step 2: Download file
-      setExportProgress("Mengunduh file...");
+        // Auto download
+        const link = document.createElement("a");
+        link.href = data.downloadUrl;
+        link.download = data.metadata.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-      // Auto download menggunakan anchor tag
-      const link = document.createElement("a");
-      link.href = data.downloadUrl;
-      link.download = data.metadata.fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Step 3: Success
-      toast.success(
-        <div className="space-y-1">
-          <p className="font-semibold">Ekspor berhasil!</p>
-          <p className="text-xs text-zinc-500">
-            File: {data.metadata.fileName}
-          </p>
-          <p className="text-xs text-zinc-500">
-            Ukuran: {(data.metadata.fileSize / 1024 / 1024).toFixed(2)} MB
-          </p>
-        </div>
-      );
-
-      setExportProgress("");
-    } catch (error) {
-      console.error("Error saat ekspor:", error);
-
-      toast.error(
-        <div className="space-y-1">
-          <p className="font-semibold">Ekspor gagal</p>
-          <p className="text-xs text-zinc-500">
-            {error instanceof Error ? error.message : "Terjadi kesalahan"}
-          </p>
-        </div>
-      );
-
-      setExportProgress("");
-    } finally {
-      setIsExporting(false);
-    }
+        // Kembalikan JSX untuk ditampilkan di toast
+        return (
+          <div className="space-y-1 text-left">
+            <p className="font-semibold">Ekspor berhasil!</p>
+            <p className="text-xs text-zinc-500">
+              File: {data.metadata.fileName}
+            </p>
+            <p className="text-xs text-zinc-500">Ukuran: {fileSizeMB} MB</p>
+          </div>
+        );
+      },
+      error: (error) => `Ekspor gagal: ${error.message}`,
+      finally: () => {
+        setIsExporting(false);
+      },
+    });
   };
 
   return (

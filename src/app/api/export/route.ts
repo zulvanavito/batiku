@@ -116,6 +116,7 @@ export async function POST(request: Request) {
       );
       console.log("Vectorization job queued");
     }
+    
 
     // 7. Buat URL download
     const downloadUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${zipKey}`;
