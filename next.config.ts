@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Output configuration - HARUS DI ROOT LEVEL
+  output: "standalone",
+
+  // Image optimization configuration
   images: {
     remotePatterns: [
       {
@@ -11,9 +15,10 @@ const nextConfig = {
         hostname: "*.amazonaws.com",
       },
     ],
-
-    output: "standalone",
+    // ❌ JANGAN taruh output di sini!
   },
+
+  // CORS headers configuration
   async headers() {
     return [
       {
