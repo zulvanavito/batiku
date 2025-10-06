@@ -33,7 +33,11 @@ import { ExportProgress } from "@/components/studio/export-progress";
 
 // Import utilities & types
 import { exportHistory } from "@/lib/export-history";
-import type { RapportSize, ExportFormat, ExportResponse } from "@/app/types/export";
+import type {
+  RapportSize,
+  ExportFormat,
+  ExportResponse,
+} from "@/app/types/export";
 
 type Candidate = {
   imageUrl: string;
@@ -108,9 +112,37 @@ export default function StudioPage() {
     setExportProgress("Memulai proses ekspor...");
 
     try {
-      // Step 1: Kirim request ke API
+      // Step 1: Process gambar dengan canvas
+      setProgressValue(5);
+      setExportProgress("Memproses efek editor...");
+
+      const targetPx = rapportCm === 20 ? 2362 : 2953;
+
+      const { processImageWithSettings } = await import(
+        "@/lib/canvas-processor"
+      );
+
+      const processedBlob = await processImageWithSettings({
+        imageUrl: selectedCandidate.imageUrl,
+        settings: editorSettings,
+        targetSize: targetPx,
+      });
+
+      console.log("Canvas processing done. Blob size:", processedBlob.size);
+
+      // Convert blob to base64
+      const reader = new FileReader();
+      const processedImageBase64 = await new Promise<string>(
+        (resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(processedBlob);
+        }
+      );
+
+      // Step 2: Kirim ke API
       setProgressValue(10);
-      setExportProgress("Memproses gambar...");
+      setExportProgress("Mengunggah ke server...");
 
       const response = await fetch("/api/export", {
         method: "POST",
@@ -119,10 +151,11 @@ export default function StudioPage() {
         },
         body: JSON.stringify({
           imageUrl: selectedCandidate.imageUrl,
+          processedImageBase64, // Kirim gambar yang sudah diproses
           settings: editorSettings,
           rapportCm,
           format,
-          userId: "user-001", // TODO: Ganti dengan user ID dari auth
+          userId: "user-001",
           designId: `design-${Date.now()}`,
         }),
       });
@@ -130,28 +163,25 @@ export default function StudioPage() {
       setProgressValue(40);
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response
+          .json()
+          .catch(() => ({ details: "Unknown error" }));
         throw new Error(errorData.details || "Gagal mengekspor");
       }
 
       const data: ExportResponse = await response.json();
 
-      // FIX BUG NaN: Validasi data.metadata
       if (!data.metadata || !data.metadata.fileSize) {
-        console.warn("Missing metadata fileSize, using estimated value");
         data.metadata = {
           ...data.metadata,
-          fileSize: rapportCm === 20 ? 5000000 : 6500000, // Estimated 5-6.5 MB
+          fileSize: rapportCm === 20 ? 5000000 : 6500000,
         };
       }
 
       setProgressValue(70);
-
-      // Step 2: Download file
       setProgressStatus("downloading");
       setExportProgress("Mengunduh file...");
 
-      // Auto download menggunakan anchor tag
       const link = document.createElement("a");
       link.href = data.downloadUrl;
       link.download = data.metadata.fileName;
@@ -161,7 +191,6 @@ export default function StudioPage() {
 
       setProgressValue(90);
 
-      // Step 3: Simpan ke history
       exportHistory.save({
         imageUrl: selectedCandidate.imageUrl,
         downloadUrl: data.downloadUrl,
@@ -181,14 +210,13 @@ export default function StudioPage() {
       setProgressStatus("success");
       setExportProgress("Ekspor selesai!");
 
-      // Step 4: Success notification dengan data yang sudah divalidasi
       const fileSizeMB = data.metadata.fileSize
         ? (data.metadata.fileSize / 1024 / 1024).toFixed(2)
         : "~5-6";
 
       toast.success(
         <div className="space-y-1">
-          <p className="font-semibold">Ekspor berhasil! 🎉</p>
+          <p className="font-semibold">Ekspor berhasil!</p>
           <p className="text-xs text-zinc-500">
             File: {data.metadata.fileName}
           </p>
@@ -202,7 +230,6 @@ export default function StudioPage() {
         }
       );
 
-      // Hide progress bar after 2 seconds
       setTimeout(() => {
         setProgressValue(0);
         setProgressStatus("idle");
@@ -215,7 +242,6 @@ export default function StudioPage() {
       setProgressStatus("error");
       setExportProgress("Ekspor gagal!");
 
-      // Simpan ke history dengan status failed
       if (selectedCandidate) {
         exportHistory.save({
           imageUrl: selectedCandidate.imageUrl,
@@ -235,14 +261,13 @@ export default function StudioPage() {
 
       toast.error(
         <div className="space-y-1">
-          <p className="font-semibold">Ekspor gagal ❌</p>
+          <p className="font-semibold">Ekspor gagal</p>
           <p className="text-xs text-zinc-500">
             {error instanceof Error ? error.message : "Terjadi kesalahan"}
           </p>
         </div>
       );
 
-      // Hide progress bar after error
       setTimeout(() => {
         setProgressValue(0);
         setProgressStatus("idle");

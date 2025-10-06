@@ -20,7 +20,14 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { imageUrl, settings, rapportCm = 25, userId, designId } = body;
+    const { 
+      imageUrl, 
+      processedImageBase64, // Gambar yang sudah diproses dari canvas
+      settings, 
+      rapportCm = 25, 
+      userId, 
+      designId 
+    } = body;
 
     if (!imageUrl) {
       return new NextResponse("Bad Request: imageUrl is required", {
@@ -32,22 +39,32 @@ export async function POST(request: Request) {
     console.log("Dengan pengaturan:", settings);
     console.log(`Ukuran raport: ${rapportCm} cm`);
 
-    // 1. Download image dari S3
-    const imageResponse = await axios.get(imageUrl, {
-      responseType: "arraybuffer",
-      timeout: 30000, // 30 detik timeout
-    });
+    let pngBuffer: Buffer;
 
-    // 2. Process dengan Sharp - resize ke 300 DPI
-    const targetPx = rapportCm === 20 ? 2362 : 2953; // 20cm atau 25cm @ 300 DPI
+    // 1. Gunakan processed image jika ada, kalau tidak download dari URL
+    if (processedImageBase64) {
+      console.log("Menggunakan gambar yang sudah diproses dari canvas");
+      // Convert base64 to buffer
+      const base64Data = processedImageBase64.replace(/^data:image\/\w+;base64,/, "");
+      pngBuffer = Buffer.from(base64Data, "base64");
+    } else {
+      console.log("Download image dari URL (fallback)");
+      const imageResponse = await axios.get(imageUrl, {
+        responseType: "arraybuffer",
+        timeout: 30000,
+      });
+      pngBuffer = Buffer.from(imageResponse.data);
+    }
+
+    // 2. Process dengan Sharp - hanya resize (effects sudah dari canvas)
+    const targetPx = rapportCm === 20 ? 2362 : 2953;
 
     console.log(`Processing image ke ${targetPx}x${targetPx}px @ 300 DPI...`);
 
-    const processedPng = await sharp(imageResponse.data)
+    const processedPng = await sharp(pngBuffer)
       .resize(targetPx, targetPx, {
-        fit: "cover",
-        kernel: "lanczos3",
-        position: "center",
+        fit: "contain",
+        background: { r: 255, g: 255, b: 255, alpha: 1 },
       })
       .png({
         quality: 100,
@@ -61,7 +78,7 @@ export async function POST(request: Request) {
 
     console.log(`Image processed. Size: ${processedPng.length} bytes`);
 
-    // 3. Buat metadata sesuai PRD
+    // 3. Buat metadata
     const metadata = {
       sourceImage: imageUrl,
       createdAt: new Date().toISOString(),
@@ -75,17 +92,14 @@ export async function POST(request: Request) {
       designId: designId || null,
     };
 
-    // 4. Buat ZIP package (PNG + metadata)
+    // 4. Buat ZIP package
     const zip = new JSZip();
     const originalFileName = imageUrl.split("/").pop() || "batik.png";
     const baseName = originalFileName.replace(".png", "");
     const timestamp = Date.now();
 
-    // Add files ke ZIP
     zip.file(`${baseName}.png`, processedPng);
     zip.file("metadata.json", JSON.stringify(metadata, null, 2));
-
-    // Info file untuk user
     zip.file(
       "README.txt",
       `Batik Export Package
@@ -94,6 +108,12 @@ export async function POST(request: Request) {
 File ini berisi:
 - ${baseName}.png: Raport batik ${rapportCm}x${rapportCm} cm @ 300 DPI
 - metadata.json: Parameter desain dan informasi ekspor
+
+Editor Settings:
+- Repeat: ${settings?.repeat || "N/A"}
+- Simetri: ${settings?.symmetry || "N/A"}
+- Kepadatan Isèn: ${settings?.density || "N/A"}%
+- Ketebalan Garis: ${settings?.thickness || "N/A"}
 
 SVG vectorization akan tersedia di versi berikutnya.
 
@@ -134,7 +154,7 @@ Diekspor pada: ${new Date().toLocaleString("id-ID")}
     // 6. Generate download URL
     const downloadUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${zipKey}`;
 
-    console.log(`✅ Ekspor selesai. URL: ${downloadUrl}`);
+    console.log(`Ekspor selesai. URL: ${downloadUrl}`);
 
     return NextResponse.json({
       success: true,
@@ -142,7 +162,7 @@ Diekspor pada: ${new Date().toLocaleString("id-ID")}
       zipKey,
       metadata: {
         fileName: `${baseName}-${timestamp}.zip`,
-        fileSize: zipBuffer.length, // ✅ FIX: Pastikan fileSize selalu ada
+        fileSize: zipBuffer.length,
         rapport_cm: rapportCm,
         resolution: `${targetPx}x${targetPx}`,
         dpi: 300,
@@ -150,14 +170,13 @@ Diekspor pada: ${new Date().toLocaleString("id-ID")}
       message: "Export berhasil. PNG 300 DPI siap diunduh.",
     });
   } catch (error) {
-    console.error("❌ Error di API export:", error);
+    console.error("Error di API export:", error);
 
-    // Error handling yang lebih detail
     let errorMessage = "Internal Server Error";
     let errorDetails = "Unknown error";
 
     if (axios.isAxiosError(error)) {
-      errorMessage = "Gagal mengunduh gambar dari URL";
+      errorMessage = "Gagal memproses gambar";
       errorDetails = error.message;
     } else if (error instanceof Error) {
       errorDetails = error.message;
