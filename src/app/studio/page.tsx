@@ -361,14 +361,14 @@ export default function StudioPage() {
   <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200 flex items-center justify-center p-4 overflow-hidden">
     {selectedCandidate ? (
       <div className="w-full h-full relative">
-        <div className="absolute top-0 right-0 p-2 z-20">
-          <Button variant="ghost" size="sm" onClick={clearSelection}>
-            <X className="w-4 h-4 mr-2" /> Batal Pilih
+        <div className="absolute top-0 right-0 p-2 z-20 ">
+          <Button className="hover:cursor-pointer" variant="outline" size="sm" onClick={clearSelection}>
+            <X className="w-4 h-4 mr-2 " /> Batal Pilih
           </Button>
         </div>
         
         {/* Simple 2D Preview */}
-        <div className="w-full h-full flex items-center justify-center p-8">
+        <div className="w-full h-full flex items-center justify-center p-8 mt-5">
           <div className="relative w-full h-full">
             <Image
               src={selectedCandidate.imageUrl}

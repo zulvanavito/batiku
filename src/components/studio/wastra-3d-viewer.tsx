@@ -4,11 +4,12 @@
 import { Canvas } from "@react-three/fiber";
 import {
   OrbitControls,
+  useGLTF,
   useTexture,
   Environment,
   PerspectiveCamera,
 } from "@react-three/drei";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,68 +27,84 @@ interface Wastra3DViewerProps {
   disabled?: boolean;
 }
 
-// 3D Model Component - Simple Shirt Shape
-function ShirtModel({ textureUrl }: { textureUrl: string }) {
+// GLB Shirt Model Component
+function ShirtGLBModel({ textureUrl }: { textureUrl: string }) {
+  const { scene } = useGLTF("/models/kemeja3d.glb");
   const texture = useTexture(textureUrl);
 
+  // Configure texture
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(1, 1);
+  texture.flipY = false; // Important for GLB models
 
-  return (
-    <group>
-      {/* Body */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[2, 2.5, 0.3]} />
-        <meshStandardMaterial map={texture} roughness={0.7} metalness={0.1} />
-      </mesh>
+  useEffect(() => {
+    // Center the model geometry
+    const box = new THREE.Box3().setFromObject(scene);
+    const center = box.getCenter(new THREE.Vector3());
 
-      {/* Left Sleeve */}
-      <mesh position={[-1.3, 0.5, 0]} rotation={[0, 0, Math.PI / 6]}>
-        <boxGeometry args={[1, 0.8, 0.3]} />
-        <meshStandardMaterial map={texture} roughness={0.7} metalness={0.1} />
-      </mesh>
+    // Move all meshes to center
+    scene.position.x = -center.x;
+    scene.position.y = -center.y;
+    scene.position.z = -center.z;
 
-      {/* Right Sleeve */}
-      <mesh position={[1.3, 0.5, 0]} rotation={[0, 0, -Math.PI / 6]}>
-        <boxGeometry args={[1, 0.8, 0.3]} />
-        <meshStandardMaterial map={texture} roughness={0.7} metalness={0.1} />
-      </mesh>
+    // Traverse the model and apply texture to all meshes
+    scene.traverse((child: any) => {
+      if (child.isMesh) {
+        // Clone material to avoid affecting original
+        child.material = child.material.clone();
 
-      {/* Collar */}
-      <mesh position={[0, 1.5, 0.1]}>
-        <boxGeometry args={[0.6, 0.3, 0.15]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.8} />
-      </mesh>
-    </group>
-  );
+        // Apply batik texture
+        child.material.map = texture;
+        child.material.needsUpdate = true;
+
+        // Optional: adjust material properties for fabric look
+        child.material.roughness = 0.8;
+        child.material.metalness = 0.1;
+      }
+    });
+  }, [scene, texture]);
+
+  return <primitive object={scene.clone()} scale={1} />;
 }
 
-// 3D Model Component - Fabric Panel
-function FabricModel({ textureUrl }: { textureUrl: string }) {
+// GLB Fabric Model Component
+function FabricGLBModel({ textureUrl }: { textureUrl: string }) {
+  const { scene } = useGLTF("/models/kain3d.glb");
   const texture = useTexture(textureUrl);
 
+  // Configure texture for fabric with tiling
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(3, 3);
+  texture.repeat.set(2, 2);
+  texture.flipY = false;
 
-  return (
-    <group>
-      <mesh rotation={[0, 0, 0]}>
-        <planeGeometry args={[4, 4, 32, 32]} />
-        <meshStandardMaterial
-          map={texture}
-          side={THREE.DoubleSide}
-          roughness={0.8}
-          metalness={0.0}
-        />
-      </mesh>
-    </group>
-  );
+  useEffect(() => {
+    // Center the model geometry
+    const box = new THREE.Box3().setFromObject(scene);
+    const center = box.getCenter(new THREE.Vector3());
+
+    scene.position.x = -center.x;
+    scene.position.y = -center.y;
+    scene.position.z = -center.z;
+
+    scene.traverse((child: any) => {
+      if (child.isMesh) {
+        child.material = child.material.clone();
+        child.material.map = texture;
+        child.material.needsUpdate = true;
+        child.material.roughness = 0.9;
+        child.material.metalness = 0.0;
+        child.material.side = THREE.DoubleSide;
+      }
+    });
+  }, [scene, texture]);
+
+  return <primitive object={scene.clone()} scale={1} />;
 }
 
 // Loading Component
 function LoadingFallback() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 rounded-lg">
+    <div className="absolute inset-0 flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 rounded-lg z-10">
       <div className="text-center">
         <Loader2 className="w-8 h-8 animate-spin text-zinc-400 mx-auto mb-2" />
         <p className="text-sm text-zinc-500">Loading 3D model...</p>
@@ -105,6 +122,12 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
   const proxyTextureUrl = `/api/proxy-image?url=${encodeURIComponent(
     imageUrl
   )}`;
+
+  // Reset loading state when switching models
+  const handleModelChange = (value: string) => {
+    setActiveModel(value as any);
+    setIsLoading(true);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -126,10 +149,7 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
 
         <Tabs
           value={activeModel}
-          onValueChange={(v) => {
-            setActiveModel(v as any);
-            setIsLoading(true);
-          }}
+          onValueChange={handleModelChange}
           className="flex-1 flex flex-col"
         >
           <TabsList className="grid w-full grid-cols-2">
@@ -147,32 +167,41 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
             {isLoading && <LoadingFallback />}
             <Canvas
               className="bg-gradient-to-b from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900 rounded-lg"
-              onCreated={() => setIsLoading(false)}
+              onCreated={() => setTimeout(() => setIsLoading(false), 500)}
             >
               <Suspense fallback={null}>
-                <PerspectiveCamera makeDefault position={[0, 0, 6]} fov={50} />
+                <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
 
-                {/* Lighting */}
-                <ambientLight intensity={0.6} />
+                {/* Lighting setup for shirt */}
+                <ambientLight intensity={0.5} />
                 <directionalLight
                   position={[5, 5, 5]}
-                  intensity={0.8}
+                  intensity={1}
                   castShadow
                 />
-                <directionalLight position={[-5, 3, -5]} intensity={0.4} />
-                <pointLight position={[0, -3, 2]} intensity={0.3} />
-
-                <ShirtModel textureUrl={proxyTextureUrl} />
-
-                <OrbitControls
-                  enablePan={false}
-                  minDistance={4}
-                  maxDistance={10}
-                  minPolarAngle={Math.PI / 4}
-                  maxPolarAngle={Math.PI / 1.5}
+                <directionalLight position={[-5, 3, -5]} intensity={0.5} />
+                <pointLight position={[0, -2, 3]} intensity={0.4} />
+                <spotLight
+                  position={[0, 5, 0]}
+                  angle={0.3}
+                  penumbra={1}
+                  intensity={0.5}
                 />
 
-                <Environment preset="warehouse" />
+                <ShirtGLBModel textureUrl={proxyTextureUrl} />
+
+                <OrbitControls
+                  enablePan={true}
+                  minDistance={3}
+                  maxDistance={10}
+                  minPolarAngle={0}
+                  maxPolarAngle={Math.PI}
+                  target={[0, 0, 0]}
+                  enableDamping={true}
+                  dampingFactor={0.05}
+                />
+
+                <Environment preset="studio" />
               </Suspense>
             </Canvas>
           </TabsContent>
@@ -181,35 +210,45 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
             {isLoading && <LoadingFallback />}
             <Canvas
               className="bg-gradient-to-b from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900 rounded-lg"
-              onCreated={() => setIsLoading(false)}
+              onCreated={() => setTimeout(() => setIsLoading(false), 500)}
             >
               <Suspense fallback={null}>
                 <PerspectiveCamera makeDefault position={[0, 0, 4]} fov={60} />
 
-                {/* Lighting */}
-                <ambientLight intensity={0.7} />
-                <directionalLight position={[3, 3, 3]} intensity={0.8} />
-                <directionalLight position={[-3, 2, -2]} intensity={0.5} />
+                {/* Lighting setup for fabric */}
+                <ambientLight intensity={0.6} />
+                <directionalLight position={[3, 3, 3]} intensity={0.9} />
+                <directionalLight position={[-3, 2, -2]} intensity={0.6} />
+                <pointLight position={[0, 0, 2]} intensity={0.3} />
 
-                <FabricModel textureUrl={proxyTextureUrl} />
+                <FabricGLBModel textureUrl={proxyTextureUrl} />
 
                 <OrbitControls
-                  enablePan={false}
+                  enablePan={true}
                   minDistance={2}
                   maxDistance={8}
+                  target={[0, 0, 0]}
+                  enableDamping={true}
+                  dampingFactor={0.05}
                 />
 
-                <Environment preset="apartment" />
+                <Environment preset="warehouse" />
               </Suspense>
             </Canvas>
           </TabsContent>
         </Tabs>
 
         <div className="flex items-center justify-between text-xs text-zinc-500 pt-2 border-t">
-          <span>Drag untuk rotate • Scroll untuk zoom</span>
+          <span>
+            Drag untuk rotate • Scroll untuk zoom • Shift + Drag untuk pan
+          </span>
           <span className="text-zinc-400">Powered by Three.js</span>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+// Preload models for better performance
+useGLTF.preload("/models/kemeja3d.glb");
+useGLTF.preload("/models/kain3d.glb");
