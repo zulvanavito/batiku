@@ -15,10 +15,10 @@ const nextConfig = {
         hostname: "*.amazonaws.com",
       },
     ],
-    // ❌ JANGAN taruh output di sini!
+    
   },
 
-  // CORS headers configuration
+  
   async headers() {
     return [
       {
