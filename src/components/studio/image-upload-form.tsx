@@ -78,7 +78,7 @@ export function ImageUploadForm({
     formData.append("mode", "image");
 
     try {
-      const response = await fetch("/api/generate-batik", {
+      const response = await fetch("/api/generate-variation", {
         method: "POST",
         body: formData,
       });

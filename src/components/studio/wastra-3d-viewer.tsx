@@ -173,7 +173,7 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
 
                 {/* Lighting setup for shirt */}
-                <ambientLight intensity={0.5} />
+                <ambientLight intensity={0.3} />
                 <directionalLight
                   position={[5, 5, 5]}
                   intensity={1}
@@ -192,8 +192,8 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
 
                 <OrbitControls
                   enablePan={true}
-                  minDistance={3}
-                  maxDistance={10}
+                  minDistance={1}
+                  maxDistance={7}
                   minPolarAngle={0}
                   maxPolarAngle={Math.PI}
                   target={[0, 0, 0]}
