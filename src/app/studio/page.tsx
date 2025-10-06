@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { IconButton } from "@/components/ui/icon-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -10,7 +9,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FileImage, Home, Palette, Type, Wand2, X } from "lucide-react";
+import {
+  FileImage,
+  Home,
+  Palette,
+  Type,
+  Wand2,
+  X,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { toast, Toaster } from "sonner";
@@ -103,34 +110,8 @@ export default function StudioPage() {
     setExportProgress("Memulai proses ekspor...");
 
     try {
-      setProgressValue(5);
-      setExportProgress("Memproses efek editor...");
-
-      const targetPx = rapportCm === 20 ? 2362 : 2953;
-
-      const { processImageWithSettings } = await import(
-        "@/lib/canvas-processor"
-      );
-
-      const processedBlob = await processImageWithSettings({
-        imageUrl: selectedCandidate.imageUrl,
-        settings: editorSettings,
-        targetSize: targetPx,
-      });
-
-      console.log("Canvas processing done. Blob size:", processedBlob.size);
-
-      const reader = new FileReader();
-      const processedImageBase64 = await new Promise<string>(
-        (resolve, reject) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(processedBlob);
-        }
-      );
-
       setProgressValue(10);
-      setExportProgress("Mengunggah ke server...");
+      setExportProgress("Memproses gambar...");
 
       const response = await fetch("/api/export", {
         method: "POST",
@@ -139,7 +120,6 @@ export default function StudioPage() {
         },
         body: JSON.stringify({
           imageUrl: selectedCandidate.imageUrl,
-          processedImageBase64, // Kirim gambar yang sudah diproses
           settings: editorSettings,
           rapportCm,
           format,
@@ -277,146 +257,204 @@ export default function StudioPage() {
         message={exportProgress}
       />
 
-      <div className="min-h-screen w-full bg-zinc-100 dark:bg-zinc-900 text-foreground flex flex-col">
-        {/* Header */}
-        <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b bg-white dark:bg-black dark:border-zinc-800/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/Batiku Only.png"
-              alt="Batiku Logo"
-              width={80}
-              height={20}
-              style={{ height: "auto" }}
-            />
-          </Link>
-          <div className="flex-1">
-            <h1 className="font-semibold text-sm text-zinc-500 dark:text-zinc-400">
-              / Studio
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedCandidate && (
-              <Wastra3DViewer
-                imageUrl={selectedCandidate.imageUrl}
-                disabled={!selectedCandidate}
+      <div className="min-h-screen w-full bg-gradient-to-b from-zinc-50 via-white to-zinc-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col">
+        {/* Header - Modern dengan Amber Accent */}
+        <header className="sticky top-0 z-50 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl">
+          <div className="flex h-16 items-center gap-4 px-6 lg:px-8">
+            <Link href="/" className="flex items-center gap-3 group">
+              <Image
+                src="/Batiku Only.png"
+                alt="Batiku Logo"
+                width={150}
+                height={50}
+                className="transition-transform group-hover:scale-105"
+                style={{ height: "auto" }}
               />
-            )}
-            <ExportHistory />
-            <ExportDialog
-              disabled={!selectedCandidate}
-              isExporting={isExporting}
-              exportProgress={exportProgress}
-              onExport={handleExport}
-            />
+            </Link>
+
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                {selectedCandidate && (
+                  <div className="ml-2 px-2 py-1 rounded-full bg-gradient-to-r from-amber-100 to-amber-200 dark:from-amber-950 dark:to-amber-900">
+                    <span className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                      Kandidat #{selectedCandidate.idx}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              {selectedCandidate && (
+                <Wastra3DViewer
+                  imageUrl={selectedCandidate.imageUrl}
+                  disabled={!selectedCandidate}
+                />
+              )}
+              <ExportHistory />
+              <ExportDialog
+                disabled={!selectedCandidate}
+                isExporting={isExporting}
+                exportProgress={exportProgress}
+                onExport={handleExport}
+              />
+            </div>
           </div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar kiri */}
-          <aside className="inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-white dark:bg-black sm:flex">
-            <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
+          {/* Sidebar Kiri - Mode Selector dengan Amber Theme */}
+          <aside className="hidden sm:flex flex-col w-20 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+            <nav className="flex flex-col items-center gap-3 py-6 px-3">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href="/">
-                    <IconButton
-                      variant="ghost"
-                      className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                    >
-                      <Home className="h-5 w-5" />
-                    </IconButton>
+                  <Link
+                    href="/"
+                    className="group flex items-center justify-center w-12 h-12 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all duration-200"
+                  >
+                    <Home className="h-5 w-5" />
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent side="right">Beranda</TooltipContent>
+                <TooltipContent side="right" className="font-medium">
+                  Beranda
+                </TooltipContent>
               </Tooltip>
+
+              <div className="w-full h-px bg-zinc-200 dark:bg-zinc-800 my-2" />
+
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <IconButton
-                    variant={activeMode === "text" ? "secondary" : "ghost"}
+                  <button
                     onClick={() => setActiveMode("text")}
-                    className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                    className={`group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 ${
+                      activeMode === "text"
+                        ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white shadow-lg shadow-amber-600/30"
+                        : "text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    }`}
                   >
                     <Type className="h-5 w-5" />
-                  </IconButton>
+                  </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Mode Teks</TooltipContent>
+                <TooltipContent side="right" className="font-medium">
+                  Mode Teks
+                </TooltipContent>
               </Tooltip>
+
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <IconButton
-                    variant={activeMode === "image" ? "secondary" : "ghost"}
+                  <button
                     onClick={() => setActiveMode("image")}
-                    className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                    className={`group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 ${
+                      activeMode === "image"
+                        ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white shadow-lg shadow-amber-600/30"
+                        : "text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    }`}
                   >
                     <FileImage className="h-5 w-5" />
-                  </IconButton>
+                  </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Mode Gambar</TooltipContent>
+                <TooltipContent side="right" className="font-medium">
+                  Mode Gambar
+                </TooltipContent>
               </Tooltip>
             </nav>
           </aside>
 
-          {/* Main Canvas */}
-          <main className="flex-1 flex items-center justify-center p-4 lg:p-8 relative">
-  <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200 flex items-center justify-center p-4 overflow-hidden">
-    {selectedCandidate ? (
-      <div className="w-full h-full relative">
-        <div className="absolute top-0 right-0 p-2 z-20 ">
-          <Button className="hover:cursor-pointer" variant="outline" size="sm" onClick={clearSelection}>
-            <X className="w-4 h-4 mr-2 " /> Batal Pilih
-          </Button>
-        </div>
-        
-        {/* Simple 2D Preview */}
-        <div className="w-full h-full flex items-center justify-center p-8 mt-5">
-          <div className="relative w-full h-full">
-            <Image
-              src={selectedCandidate.imageUrl}
-              alt="Preview Motif Batik"
-              fill
-              className="object-contain rounded-lg"
-              unoptimized
-              priority
-            />
-          </div>
-        </div>
-      </div>
-    ) : candidates.length > 0 ? (
-      <ResultsDisplay
-        candidates={candidates}
-        onSelectCandidate={handleSelectCandidate}
-      />
-    ) : (
-      <div className="w-full h-full flex items-center justify-center">
-        <p className="text-zinc-500 dark:text-zinc-600">
-          Hasil generasi akan muncul di sini
-        </p>
-      </div>
-    )}
-  </div>
-</main>
+          {/* Main Canvas - Modern Design */}
+          <main className="flex-1 flex items-center justify-center p-6 lg:p-10">
+            <div className="w-full max-w-3xl">
+              <div className="aspect-square rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden relative">
+                {selectedCandidate ? (
+                  <div className="w-full h-full relative group">
+                    {/* Clear Button */}
+                    <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <Button
+                        onClick={clearSelection}
+                        size="sm"
+                        variant="secondary"
+                        className="shadow-lg backdrop-blur-sm bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-900"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Batal Pilih
+                      </Button>
+                    </div>
 
-          {/* Right Sidebar */}
-          <aside className="hidden lg:flex lg:w-80 flex-col border-l bg-white dark:bg-black p-4">
+                    {/* Image Preview dengan Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-50/30 to-transparent dark:from-amber-950/10 pointer-events-none" />
+
+                    <div className="w-full h-full flex items-center justify-center p-12">
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={selectedCandidate.imageUrl}
+                          alt="Preview Motif Batik"
+                          fill
+                          className="object-contain rounded-lg drop-shadow-2xl"
+                          unoptimized
+                          priority
+                        />
+                      </div>
+                    </div>
+
+                    {/* Info Badge */}
+                    <div className="absolute bottom-4 left-4 px-4 py-2 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm shadow-lg border border-zinc-200 dark:border-zinc-800">
+                      <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        Kandidat #{selectedCandidate.idx}
+                      </span>
+                    </div>
+                  </div>
+                ) : candidates.length > 0 ? (
+                  <ResultsDisplay
+                    candidates={candidates}
+                    onSelectCandidate={handleSelectCandidate}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-8">
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-950 dark:to-amber-900 flex items-center justify-center mb-6">
+                      <Sparkles className="w-10 h-10 text-amber-600 dark:text-amber-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+                      Siap Berkarya?
+                    </h3>
+                    <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
+                      Mulai dengan mendeskripsikan motif batik impian Anda atau
+                      upload gambar referensi
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </main>
+
+          {/* Right Sidebar - Clean Editor Panel */}
+          <aside className="hidden lg:flex flex-col w-96 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
               className="flex flex-col h-full"
             >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="generate">
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  Generate
-                </TabsTrigger>
-                <TabsTrigger value="edit">
-                  <Palette className="w-4 h-4 mr-2" />
-                  Editor
-                </TabsTrigger>
-              </TabsList>
+              <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
+                <TabsList className="grid w-full grid-cols-2 bg-zinc-100 dark:bg-zinc-900 p-1">
+                  <TabsTrigger
+                    value="generate"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+                  >
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Generate
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="edit"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+                  >
+                    <Palette className="w-4 h-4 mr-2" />
+                    Editor
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent
                 value="generate"
-                className="flex-1 overflow-y-auto mt-4 pr-2"
+                className="flex-1 overflow-y-auto p-6 space-y-6"
               >
                 {activeMode === "text" ? (
                   <GeneratorForm
@@ -429,13 +467,15 @@ export default function StudioPage() {
                 )}
               </TabsContent>
 
-              <TabsContent
-                value="edit"
-                className="flex-1 overflow-y-auto mt-4 pr-2"
-              >
+              <TabsContent value="edit" className="flex-1 overflow-y-auto p-6">
                 {!selectedCandidate ? (
-                  <div className="text-center text-sm text-zinc-500 pt-10">
-                    Pilih salah satu kandidat untuk mulai mengedit.
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                    <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-4">
+                      <Palette className="w-8 h-8 text-zinc-400 dark:text-zinc-600" />
+                    </div>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Pilih salah satu kandidat untuk mulai mengedit
+                    </p>
                   </div>
                 ) : (
                   <EditorPanel
