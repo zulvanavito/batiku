@@ -23,10 +23,6 @@ import {
   EditorPanel,
   type EditorSettings,
 } from "@/components/studio/editor-panel";
-import {
-  MockupToolbar,
-  type MockupMode,
-} from "@/components/studio/mockup-toolbar";
 import { ExportDialog } from "@/components/studio/export-dialog";
 import { ExportHistory } from "@/components/studio/export-history";
 import { ExportProgress } from "@/components/studio/export-progress";
@@ -65,7 +61,6 @@ export default function StudioPage() {
     density: 50,
     thickness: 1.5,
   });
-  const [mockupMode, setMockupMode] = useState<MockupMode>("tile");
 
   // Export states
   const [isExporting, setIsExporting] = useState(false);
@@ -83,7 +78,6 @@ export default function StudioPage() {
 
   const handleSelectCandidate = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
-    setMockupMode("tile");
     toast.success(`Kandidat #${candidate.idx} dipilih!`);
     setActiveTab("edit");
   };
@@ -99,7 +93,6 @@ export default function StudioPage() {
     setEditorSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  // 🔥 HANDLER EKSPOR DENGAN PROGRESS BAR & FIX BUG NaN
   const handleExport = async (rapportCm: RapportSize, format: ExportFormat) => {
     if (!selectedCandidate) {
       toast.error("Pilih kandidat terlebih dahulu!");
@@ -282,7 +275,6 @@ export default function StudioPage() {
     <TooltipProvider delayDuration={0}>
       <Toaster position="top-center" richColors />
 
-      {/* Progress Bar Floating */}
       <ExportProgress
         isVisible={progressValue > 0}
         progress={progressValue}
@@ -291,7 +283,7 @@ export default function StudioPage() {
       />
 
       <div className="min-h-screen w-full bg-zinc-100 dark:bg-zinc-900 text-foreground flex flex-col">
-        {/* Header dengan tombol ekspor & history */}
+        {/* Header */}
         <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b bg-white dark:bg-black dark:border-zinc-800/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -307,8 +299,6 @@ export default function StudioPage() {
               / Studio
             </h1>
           </div>
-
-          {/* Tombol History & Export */}
           <div className="flex items-center gap-2">
             <ExportHistory />
             <ExportDialog
@@ -321,7 +311,7 @@ export default function StudioPage() {
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar Kiri */}
+          {/* Sidebar kiri */}
           <aside className="inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-white dark:bg-black sm:flex">
             <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
               <Tooltip>
@@ -364,7 +354,7 @@ export default function StudioPage() {
             </nav>
           </aside>
 
-          {/* Main Canvas Area */}
+          {/* Main Canvas */}
           <main className="flex-1 flex items-center justify-center p-4 lg:p-8 relative">
             <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200 flex items-center justify-center p-4 overflow-hidden">
               {selectedCandidate ? (
@@ -375,59 +365,18 @@ export default function StudioPage() {
                     </Button>
                   </div>
 
-                  {/* Mockup Shirt */}
-                  {mockupMode === "shirt" && (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <svg viewBox="0 0 320 320" className="w-full h-full">
-                        <defs>
-                          <pattern
-                            id="batikPattern"
-                            patternUnits="userSpaceOnUse"
-                            width="150"
-                            height="150"
-                          >
-                            <image
-                              href={selectedCandidate.imageUrl}
-                              x="0"
-                              y="0"
-                              width="150"
-                              height="150"
-                            />
-                          </pattern>
-                        </defs>
-                        <path
-                          fill="url(#batikPattern)"
-                          d="M106.3,32.4c-4.7-0.1-8.5,3.7-8.6,8.4V62c0,0-15.3,4.3-19.6,12.7c-4.3,8.4,1.1,16.8-1.1,23.3c-2.2,6.5-12.8,12.7-12.8,12.7l-47,38.2L16,280.4h288l-1.3-131.5l-47-38.2c0,0-10.7-6.2-12.8-12.7c-2.2-6.5,3.2-14.9-1.1-23.3c-4.3-8.4-19.6-12.7-19.6-12.7V40.8c-0.1-4.7-3.9-8.5-8.6-8.4H106.3z"
-                        />
-                      </svg>
+                  {/* Preview tile tunggal */}
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-2/3 h-2/3 relative">
+                      <Image
+                        src={selectedCandidate.imageUrl}
+                        alt="Preview Gambar"
+                        layout="fill"
+                        objectFit="contain"
+                        unoptimized
+                      />
                     </div>
-                  )}
-
-                  {/* Mockup Fabric */}
-                  {mockupMode === "fabric" && (
-                    <div
-                      className="w-full h-full"
-                      style={{
-                        backgroundImage: `url(${selectedCandidate.imageUrl})`,
-                        backgroundSize: "150px 150px",
-                      }}
-                    />
-                  )}
-
-                  {/* Mockup Single Tile */}
-                  {mockupMode === "tile" && (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="w-2/3 h-2/3 relative">
-                        <Image
-                          src={selectedCandidate.imageUrl}
-                          alt="Pratinjau Ubin"
-                          layout="fill"
-                          objectFit="contain"
-                          unoptimized
-                        />
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               ) : candidates.length > 0 ? (
                 <ResultsDisplay
@@ -442,17 +391,9 @@ export default function StudioPage() {
                 </div>
               )}
             </div>
-
-            {/* Mockup Toolbar */}
-            {selectedCandidate && (
-              <MockupToolbar
-                activeMode={mockupMode}
-                onModeChange={setMockupMode}
-              />
-            )}
           </main>
 
-          {/* Right Sidebar - Generator & Editor */}
+          {/* Right Sidebar */}
           <aside className="hidden lg:flex lg:w-80 flex-col border-l bg-white dark:bg-black p-4">
             <Tabs
               value={activeTab}
