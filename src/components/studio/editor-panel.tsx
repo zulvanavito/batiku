@@ -14,9 +14,9 @@ import { Info } from "lucide-react"; // <-- 1. Import ikon Info
 
 export type EditorSettings = {
   repeat: "square" | "half-drop";
-  symmetry: "none" | "2" | "4" | "8";
-  density: number;
-  thickness: number;
+  symmetry: "none" | "2-fold" | "4-fold" | "8-fold";
+  density: number; // 0-100
+  thickness: number; // 0.5-2.0
 };
 
 type EditorPanelProps = {
