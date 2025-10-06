@@ -26,6 +26,7 @@ import {
 import { ExportDialog } from "@/components/studio/export-dialog";
 import { ExportHistory } from "@/components/studio/export-history";
 import { ExportProgress } from "@/components/studio/export-progress";
+import { Wastra3DViewer } from "@/components/studio/wastra-3d-viewer";
 
 // Import utilities & types
 import { exportHistory } from "@/lib/export-history";
@@ -48,7 +49,6 @@ type ExportProgressStatus =
   | "error";
 
 export default function StudioPage() {
-  // State management
   const [activeMode, setActiveMode] = useState<"text" | "image">("text");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
@@ -62,14 +62,12 @@ export default function StudioPage() {
     thickness: 1.5,
   });
 
-  // Export states
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<string>("");
   const [progressValue, setProgressValue] = useState(0);
   const [progressStatus, setProgressStatus] =
     useState<ExportProgressStatus>("idle");
 
-  // Handlers
   const handleGenerationComplete = (results: Candidate[]) => {
     setCandidates(results);
     setSelectedCandidate(null);
@@ -105,7 +103,6 @@ export default function StudioPage() {
     setExportProgress("Memulai proses ekspor...");
 
     try {
-      // Step 1: Process gambar dengan canvas
       setProgressValue(5);
       setExportProgress("Memproses efek editor...");
 
@@ -123,7 +120,6 @@ export default function StudioPage() {
 
       console.log("Canvas processing done. Blob size:", processedBlob.size);
 
-      // Convert blob to base64
       const reader = new FileReader();
       const processedImageBase64 = await new Promise<string>(
         (resolve, reject) => {
@@ -133,7 +129,6 @@ export default function StudioPage() {
         }
       );
 
-      // Step 2: Kirim ke API
       setProgressValue(10);
       setExportProgress("Mengunggah ke server...");
 
@@ -299,7 +294,14 @@ export default function StudioPage() {
               / Studio
             </h1>
           </div>
+
           <div className="flex items-center gap-2">
+            {selectedCandidate && (
+              <Wastra3DViewer
+                imageUrl={selectedCandidate.imageUrl}
+                disabled={!selectedCandidate}
+              />
+            )}
             <ExportHistory />
             <ExportDialog
               disabled={!selectedCandidate}
@@ -356,42 +358,43 @@ export default function StudioPage() {
 
           {/* Main Canvas */}
           <main className="flex-1 flex items-center justify-center p-4 lg:p-8 relative">
-            <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200 flex items-center justify-center p-4 overflow-hidden">
-              {selectedCandidate ? (
-                <div className="w-full h-full relative">
-                  <div className="absolute top-0 right-0 p-2 z-20">
-                    <Button variant="ghost" size="sm" onClick={clearSelection}>
-                      <X className="w-4 h-4 mr-2" /> Batal Pilih
-                    </Button>
-                  </div>
-
-                  {/* Preview tile tunggal */}
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-2/3 h-2/3 relative">
-                      <Image
-                        src={selectedCandidate.imageUrl}
-                        alt="Preview Gambar"
-                        layout="fill"
-                        objectFit="contain"
-                        unoptimized
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : candidates.length > 0 ? (
-                <ResultsDisplay
-                  candidates={candidates}
-                  onSelectCandidate={handleSelectCandidate}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <p className="text-zinc-500 dark:text-zinc-600">
-                    Hasil generasi akan muncul di sini
-                  </p>
-                </div>
-              )}
-            </div>
-          </main>
+  <div className="w-full max-w-2xl aspect-square bg-white dark:bg-black rounded-lg border dark:border-zinc-200 flex items-center justify-center p-4 overflow-hidden">
+    {selectedCandidate ? (
+      <div className="w-full h-full relative">
+        <div className="absolute top-0 right-0 p-2 z-20">
+          <Button variant="ghost" size="sm" onClick={clearSelection}>
+            <X className="w-4 h-4 mr-2" /> Batal Pilih
+          </Button>
+        </div>
+        
+        {/* Simple 2D Preview */}
+        <div className="w-full h-full flex items-center justify-center p-8">
+          <div className="relative w-full h-full">
+            <Image
+              src={selectedCandidate.imageUrl}
+              alt="Preview Motif Batik"
+              fill
+              className="object-contain rounded-lg"
+              unoptimized
+              priority
+            />
+          </div>
+        </div>
+      </div>
+    ) : candidates.length > 0 ? (
+      <ResultsDisplay
+        candidates={candidates}
+        onSelectCandidate={handleSelectCandidate}
+      />
+    ) : (
+      <div className="w-full h-full flex items-center justify-center">
+        <p className="text-zinc-500 dark:text-zinc-600">
+          Hasil generasi akan muncul di sini
+        </p>
+      </div>
+    )}
+  </div>
+</main>
 
           {/* Right Sidebar */}
           <aside className="hidden lg:flex lg:w-80 flex-col border-l bg-white dark:bg-black p-4">
