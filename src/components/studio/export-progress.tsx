@@ -37,11 +37,11 @@ export function ExportProgress({
   const getStatusColor = () => {
     switch (status) {
       case "success":
-        return "bg-green-600";
+        return "bg-green-500";
       case "error":
-        return "bg-red-600";
+        return "bg-red-500";
       default:
-        return "bg-blue-600";
+        return "bg-primary";
     }
   };
 
@@ -52,14 +52,8 @@ export function ExportProgress({
           {getStatusIcon()}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium mb-1">{message}</p>
-            <Progress 
-              value={progress} 
-              className="h-2"
-              indicatorClassName={getStatusColor()}
-            />
-            <p className="text-xs text-zinc-500 mt-1.5">
-              {progress}% selesai
-            </p>
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-zinc-500 mt-1.5">{progress}% selesai</p>
           </div>
         </div>
       </Card>

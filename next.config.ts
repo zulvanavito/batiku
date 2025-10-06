@@ -11,6 +11,8 @@ const nextConfig = {
         hostname: "*.amazonaws.com",
       },
     ],
+
+    output: "standalone",
   },
   async headers() {
     return [
