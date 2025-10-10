@@ -20,12 +20,20 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Box, Loader2, Shirt, Layers } from "lucide-react";
+import { Box, Loader2, Shirt, Layers } from "lucide-react"; // FIX: Tambah X untuk tombol tutup
 import * as THREE from "three";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"; // FIX: Import Tooltip
+import { cn } from "@/lib/utils"; // FIX: Import cn
 
 interface Wastra3DViewerProps {
   imageUrl: string;
   disabled?: boolean;
+  // FIX: Tambahkan prop untuk kontrol tampilan di menu/footer mobile
+  isMenuMode?: boolean;
 }
 
 function ShirtGLBModel({ textureUrl }: { textureUrl: string }) {
@@ -35,7 +43,7 @@ function ShirtGLBModel({ textureUrl }: { textureUrl: string }) {
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(1, 1);
   texture.flipY = false;
-  
+
   // Fix texture color space
   texture.colorSpace = THREE.SRGBColorSpace;
 
@@ -50,7 +58,7 @@ function ShirtGLBModel({ textureUrl }: { textureUrl: string }) {
           side: THREE.FrontSide,
         });
         child.material.needsUpdate = true;
-        
+
         // Disable receive shadow to reduce lighting effects
         child.receiveShadow = false;
         child.castShadow = false;
@@ -100,27 +108,53 @@ function LoadingFallback() {
   );
 }
 
-export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
+export function Wastra3DViewer({
+  imageUrl,
+  disabled,
+  isMenuMode = false,
+}: Wastra3DViewerProps) {
   const [open, setOpen] = useState(false);
   const [activeModel, setActiveModel] = useState<"shirt" | "fabric">("shirt");
   const [isLoading, setIsLoading] = useState(true);
 
-  const proxyTextureUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+  const proxyTextureUrl = `/api/proxy-image?url=${encodeURIComponent(
+    imageUrl
+  )}`;
 
   const handleModelChange = (value: string) => {
     setActiveModel(value as any);
     setIsLoading(true);
   };
 
+  // Konten tombol trigger default
+  const defaultTrigger = (
+    <Button
+      variant="outline"
+      size={isMenuMode ? "default" : "sm"}
+      disabled={disabled}
+      className={cn(
+        "gap-2 h-9 px-3 sm:h-10 sm:px-4", // Ukuran default (navbar desktop)
+        isMenuMode && "w-full justify-center h-10 px-4 text-base" // Tampilan penuh di dalam menu/footer mobile (ikon saja)
+      )}
+    >
+      {/* FIX: Menggunakan Box sebagai ikon 3D Preview */}
+      <Box className={cn("w-6 h-6", isMenuMode ? "w-6 h-6" : "w-4 h-4 mr-2")} />
+      {/* Text hanya tampil di desktop navbar atau saat isMenuMode (untuk tombol penuh di menu) */}
+      <span className={cn(isMenuMode ? "hidden lg:inline" : "inline")}>
+        3D Preview
+      </span>
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled} className="gap-2">
-          <Box className="w-4 h-4" />
-          3D Preview
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl h-[85vh]">
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>{defaultTrigger}</DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Tampilan 3D Wastra</TooltipContent>
+      </Tooltip>
+      <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Wastra 3D Preview</DialogTitle>
         </DialogHeader>
@@ -146,7 +180,7 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
             <Canvas
               className="bg-gradient-to-b from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900 rounded-lg"
               onCreated={() => setTimeout(() => setIsLoading(false), 500)}
-              gl={{ 
+              gl={{
                 antialias: true,
                 toneMapping: THREE.ACESFilmicToneMapping,
                 toneMappingExposure: 1.0, // Adjust if still too bright
@@ -157,14 +191,14 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
 
                 {/* Balanced lighting - not too bright */}
                 <ambientLight intensity={0.5} />
-                <directionalLight 
-                  position={[3, 3, 3]} 
-                  intensity={0.4} 
+                <directionalLight
+                  position={[3, 3, 3]}
+                  intensity={0.4}
                   castShadow={false}
                 />
-                <directionalLight 
-                  position={[-2, 2, -2]} 
-                  intensity={0.3} 
+                <directionalLight
+                  position={[-2, 2, -2]}
+                  intensity={0.3}
                   castShadow={false}
                 />
 
@@ -192,7 +226,7 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
             <Canvas
               className="bg-gradient-to-b from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900 rounded-lg"
               onCreated={() => setTimeout(() => setIsLoading(false), 500)}
-              gl={{ 
+              gl={{
                 antialias: true,
                 toneMapping: THREE.ACESFilmicToneMapping,
                 toneMappingExposure: 1.0,
@@ -203,9 +237,9 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
 
                 {/* Soft lighting for fabric */}
                 <ambientLight intensity={0.6} />
-                <directionalLight 
-                  position={[2, 2, 2]} 
-                  intensity={0.4} 
+                <directionalLight
+                  position={[2, 2, 2]}
+                  intensity={0.4}
                   castShadow={false}
                 />
 
@@ -229,7 +263,9 @@ export function Wastra3DViewer({ imageUrl, disabled }: Wastra3DViewerProps) {
         </Tabs>
 
         <div className="flex items-center justify-between text-xs text-zinc-500 pt-2 border-t">
-          <span>Drag untuk rotate • Scroll untuk zoom • Shift + Drag untuk pan</span>
+          <span>
+            Drag untuk rotate • Scroll untuk zoom • Shift + Drag untuk pan
+          </span>
           <span className="text-zinc-400">Powered by Three.js</span>
         </div>
       </DialogContent>
