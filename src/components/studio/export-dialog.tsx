@@ -32,176 +32,133 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { RapportSize, ExportFormat } from "@/app/types/export";
+import { cn } from "@/lib/utils"; 
 
-interface ExportDialogProps {
+// FIX: Tambahkan asChild dan className ke interface
+export interface ExportDialogProps {
   disabled?: boolean;
   isExporting?: boolean;
   exportProgress?: string;
   onExport: (rapportCm: RapportSize, format: ExportFormat) => void;
   children?: React.ReactNode;
+  asChild?: boolean; 
+  className?: string; 
 }
 
 export function ExportDialog({
   disabled = false,
   isExporting = false,
-  exportProgress = "",
   onExport,
   children,
+  asChild = false, // FIX: Destructure asChild
+  className, // FIX: Destructure className
 }: ExportDialogProps) {
   const [rapportSize, setRapportSize] = useState<RapportSize>(25);
   const [exportFormat, setExportFormat] = useState<ExportFormat>("png");
   const [open, setOpen] = useState(false);
 
   const handleExport = () => {
-    onExport(rapportSize, exportFormat);
+    // Tutup dialog sebelum memulai proses ekspor (yang akan ditunjukkan di ProgressDialog)
     setOpen(false);
+    // Jalankan fungsi ekspor utama yang ada di page.tsx
+    onExport(rapportSize, exportFormat);
   };
 
-  // Kalau ada children (custom trigger), pakai itu
-  const trigger = children || (
-    <Button size="sm" disabled={disabled || isExporting} className="gap-2">
-      {isExporting ? (
-        <>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          {exportProgress || "Memproses..."}
-        </>
-      ) : (
-        <>
-          <Download className="w-4 h-4" />
-          Ekspor
-        </>
-      )}
+  // Konten tombol trigger default
+  const defaultTrigger = (
+    <Button
+      variant="default"
+      size="sm"
+      disabled={disabled}
+      className={cn("gap-2", className)} // FIX: Gunakan className di sini
+    >
+      <Download className="w-4 h-4" />
+      Ekspor
     </Button>
   );
 
-  const targetPx = rapportSize === 20 ? 2362 : 2953;
-  const estimatedSize = rapportSize === 20 ? "~4-6 MB" : "~5-8 MB";
-
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent className="max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Ekspor Desain Batik</AlertDialogTitle>
+      <AlertDialogTrigger asChild>
+        {asChild ? children : defaultTrigger}
+      </AlertDialogTrigger>
+      {/* FIX 1: Hapus padding default (p-0) dari AlertDialogContent */}
+      <AlertDialogContent className="p-0 max-w-[95vw] sm:max-w-lg"> 
+        <AlertDialogHeader className="p-4 sm:p-6 pb-4 border-b"> {/* FIX 2: Tambahkan padding ke Header */}
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Download className="w-6 h-6 text-amber-600" />
+            Pengaturan Ekspor
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Atur pengaturan ekspor untuk desain batik Anda.
+            Pilih ukuran rapport dan format file yang Anda butuhkan.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="space-y-5 py-4">
-          {/* Pilihan Ukuran Raport */}
+        {/* FIX 3: Tambahkan padding horizontal ke konten utama */}
+        <div className="space-y-6 py-2 px-4 sm:px-6"> 
           <div className="space-y-2">
-            <Label htmlFor="rapport-size" className="text-sm font-medium">
-              Ukuran Raport
-            </Label>
+            <Label>Ukuran Rapport (cm)</Label>
             <Select
               value={rapportSize.toString()}
               onValueChange={(value) =>
-                setRapportSize(Number(value) as RapportSize)
+                setRapportSize(parseInt(value) as RapportSize)
               }
             >
-              <SelectTrigger id="rapport-size">
-                <SelectValue placeholder="Pilih ukuran" />
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih ukuran rapport" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="20">20 x 20 cm</SelectItem>
-                <SelectItem value="25">25 x 25 cm (Recommended)</SelectItem>
+                <SelectItem value="25">25x25 cm (DPI Optimal: 300)</SelectItem>
+                <SelectItem value="50">50x50 cm (DPI Optimal: 300)</SelectItem>
+                <SelectItem value="75">75x75 cm (DPI Optimal: 300)</SelectItem>
+                <SelectItem value="100">
+                  100x100 cm (DPI Optimal: 300)
+                </SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-zinc-500">
-              Ukuran standar industri untuk produksi batik
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Pilih ukuran rapport yang sesuai dengan kebutuhan produksi Anda.
             </p>
           </div>
 
-          {/* Pilihan Format Export */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Format Export</Label>
+          {/* Opsi Format File */}
+          <div className="space-y-2">
+            <Label>Format File</Label>
             <RadioGroup
               value={exportFormat}
               onValueChange={(value) => setExportFormat(value as ExportFormat)}
-              className="space-y-3"
+              className="grid grid-cols-2 gap-4"
             >
-              <div className="flex items-start space-x-3 space-y-0">
-                <RadioGroupItem
-                  value="png"
-                  id="format-png"
-                  className="mt-0.5"
-                />
-                <div className="flex-1">
-                  <Label
-                    htmlFor="format-png"
-                    className="font-normal cursor-pointer flex items-center gap-2"
-                  >
-                    <FileImage className="w-4 h-4 text-blue-600" />
-                    <span>PNG Only</span>
-                    {exportFormat === "png" && (
-                      <CheckCircle2 className="w-4 h-4 text-green-600 ml-auto" />
-                    )}
-                  </Label>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    File raster siap cetak dengan resolusi tinggi
-                  </p>
-                </div>
+              <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                <RadioGroupItem value="png" id="png-format" />
+                <Label
+                  htmlFor="png-format"
+                  className="flex items-center gap-2 font-normal cursor-pointer"
+                >
+                  <FileImage className="w-4 h-4" />
+                  PNG (Raster)
+                </Label>
               </div>
-              <div className="flex items-start space-x-3 space-y-0">
-                <RadioGroupItem
-                  value="png-svg"
-                  id="format-png-svg"
-                  disabled
-                  className="mt-0.5"
-                />
-                <div className="flex-1 opacity-50">
-                  <Label
-                    htmlFor="format-png-svg"
-                    className="font-normal cursor-not-allowed flex items-center gap-2"
-                  >
-                    <FileCode2 className="w-4 h-4 text-purple-600" />
-                    <span>PNG + SVG</span>
-                    <span className="text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded ml-auto">
-                      Coming Soon
-                    </span>
-                  </Label>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Termasuk file vektor untuk editing lebih lanjut
-                  </p>
-                </div>
+              <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                <RadioGroupItem value="png-svg" id="png-svg-format" />
+                <Label
+                  htmlFor="png-svg-format"
+                  className="flex items-center gap-2 font-normal cursor-pointer"
+                >
+                  <FileCode2 className="w-4 h-4" />
+                  PNG + SVG (Vektor)
+                </Label>
               </div>
             </RadioGroup>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              PNG untuk cetak langsung, SVG untuk editing vektor lanjutan.
+            </p>
           </div>
 
-          {/* Info Detail */}
-          <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">
-                Resolusi:
-              </span>
-              <span className="font-medium">
-                {targetPx} x {targetPx} px
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">DPI:</span>
-              <span className="font-medium">300 DPI</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">Format:</span>
-              <span className="font-medium">
-                {exportFormat === "png"
-                  ? "PNG + Metadata"
-                  : "PNG + SVG + Metadata"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">
-                Est. Ukuran File:
-              </span>
-              <span className="font-medium">{estimatedSize}</span>
-            </div>
-          </div>
-
-          {/* File yang Akan Diekspor */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
+          {/* Detail Ekspor */}
+          <div className="pt-4 border-t">
+            <Label className="font-semibold text-sm flex items-center gap-1">
+              <CheckCircle2 className="w-4 h-4 text-green-600" />
               File yang akan diekspor:
             </Label>
             <ul className="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 ml-4">
@@ -227,7 +184,7 @@ export function ExportDialog({
           </div>
         </div>
 
-        <AlertDialogFooter>
+        <AlertDialogFooter className="p-4 sm:p-6 pt-0"> {/* FIX 4: Tambahkan padding ke Footer */}
           <AlertDialogCancel disabled={isExporting}>Batal</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleExport}

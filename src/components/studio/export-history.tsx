@@ -35,10 +35,20 @@ import { exportHistory } from "@/lib/export-history";
 import type { ExportHistoryItem } from "@/app/types/export";
 import Image from "next/image";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type FilterType = "all" | "success" | "failed";
 
-export function ExportHistory() {
+interface ExportHistoryProps {
+  asChild?: boolean;
+  children?: React.ReactNode;
+}
+
+export function ExportHistory({ asChild, children }: ExportHistoryProps) {
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<ExportHistoryItem[]>([]);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -100,10 +110,11 @@ export function ExportHistory() {
   ).length;
   const failedCount = history.filter((item) => item.status === "failed").length;
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+  // Konten tombol trigger default
+  const defaultTrigger = (
+    <Tooltip delayDuration={0}>
+      <TooltipTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2 h-10 px-4">
           <History className="w-4 h-4" />
           Riwayat
           {history.length > 0 && (
@@ -112,9 +123,23 @@ export function ExportHistory() {
             </Badge>
           )}
         </Button>
+      </TooltipTrigger>
+      <TooltipContent>Riwayat Ekspor</TooltipContent>
+    </Tooltip>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {/* Menggunakan conditional rendering. Jika asChild true, gunakan children (tombol kustom dari page.tsx) */}
+        {asChild ? children : defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
-        <DialogHeader>
+      {/* FIX: Tambahkan padding horizontal yang aman di DialogContent (p-4 di mobile) */}
+      {/* Catatan: Di Shadcn/UI, p-4 (1rem) sering digunakan sebagai padding default. */}
+      <DialogContent className="max-w-2xl max-h-[80vh] p-4 sm:p-6 flex flex-col">
+        <DialogHeader className="px-0">
+          {" "}
+          {/* FIX: Hilangkan padding di header karena sudah ada di DialogContent */}
           <DialogTitle>Riwayat Ekspor</DialogTitle>
           <DialogDescription>
             Daftar ekspor yang pernah Anda lakukan. Maksimal 20 riwayat
@@ -276,6 +301,14 @@ export function ExportHistory() {
             </ScrollArea>
           </>
         )}
+
+        <div className="px-0 pt-4 border-t">
+          {" "}
+          {/* FIX: Hilangkan padding horizontal di footer karena sudah ada di DialogContent, tapi pertahankan vertical spacing */}
+          <Button onClick={() => setOpen(false)} className="w-full">
+            Tutup
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

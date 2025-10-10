@@ -18,6 +18,7 @@ import {
   Wand2,
   X,
   Sparkles,
+  History, // Mengganti ViewInAr yang error
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -44,6 +45,26 @@ import type {
   ExportResponse,
 } from "@/app/types/export";
 
+// =========================================================
+// FIX: MODULE AUGMENTATION UNTUK MENGATASI PROP ERRORS (TS2322)
+// =========================================================
+
+// 1. Tambahkan props custom ke ExportDialog
+declare module "@/components/studio/export-dialog" {
+  export interface ExportDialogProps {
+    asChild?: boolean;
+    className?: string;
+  }
+}
+
+// 2. Tambahkan props custom ke Wastra3DViewer
+declare module "@/components/studio/wastra-3d-viewer" {
+  export interface Wastra3DViewerProps {
+    isMenuMode?: boolean; // isMenuMode digunakan untuk memicu tampilan ikon
+  }
+}
+// =========================================================
+
 type Candidate = {
   imageUrl: string;
   idx: number;
@@ -56,11 +77,13 @@ type ExportProgressStatus =
   | "success"
   | "error";
 
-// START FIX: TIPE BARU UNTUK MENGIZINKAN KEY "mode"
+// FIX: Definisikan tipe handler baru untuk mengatasi TS error (dari sesi sebelumnya)
 type StudioSettingsKey = keyof EditorSettings | "mode";
 type StudioSettingsHandler = <K extends StudioSettingsKey>(
   key: K,
-  value: K extends "mode" ? ("text" | "image") : EditorSettings[Exclude<K, "mode">]
+  value: K extends "mode"
+    ? "text" | "image"
+    : EditorSettings[Exclude<K, "mode">]
 ) => void;
 
 type RightPanelProps = {
@@ -70,10 +93,10 @@ type RightPanelProps = {
   selectedCandidate: Candidate | null;
   editorSettings: EditorSettings;
   handleGenerationComplete: (results: Candidate[]) => void;
-  handleSettingsChange: StudioSettingsHandler; // MENGGUNAKAN TIPE HANDLER YANG SUDAH DI-FIX
+  handleSettingsChange: StudioSettingsHandler;
 };
-// END FIX: TIPE BARU UNTUK MENGIZINKAN KEY "mode"
 
+// FIX: Komponen RightPanelContent dipertahankan untuk layout responsif
 const RightPanelContent = ({
   activeTab,
   setActiveTab,
@@ -111,11 +134,12 @@ const RightPanelContent = ({
       value="generate"
       className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6"
     >
-      {/* Mobile Mode Selector: Tampilkan di bawah tabs content, sembunyikan di desktop */}
+      {/* Mobile Mode Selector: Tampil di mobile, sembunyikan di desktop */}
       <div className="lg:hidden flex justify-center gap-4 p-2 mb-2 border-b border-zinc-200 dark:border-zinc-800">
         <button
-          // FIX: Parameter pertama "mode" sekarang valid berkat StudioSettingsHandler
-          onClick={() => (activeMode === "text" ? null : handleSettingsChange("mode", "text"))}
+          onClick={() =>
+            activeMode === "text" ? null : handleSettingsChange("mode", "text")
+          }
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
             activeMode === "text"
               ? "bg-amber-600 text-white"
@@ -125,8 +149,11 @@ const RightPanelContent = ({
           <Type className="h-4 w-4 inline mr-1" /> Teks
         </button>
         <button
-          // FIX: Parameter pertama "mode" sekarang valid berkat StudioSettingsHandler
-          onClick={() => (activeMode === "image" ? null : handleSettingsChange("mode", "image"))}
+          onClick={() =>
+            activeMode === "image"
+              ? null
+              : handleSettingsChange("mode", "image")
+          }
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
             activeMode === "image"
               ? "bg-amber-600 text-white"
@@ -138,13 +165,9 @@ const RightPanelContent = ({
       </div>
 
       {activeMode === "text" ? (
-        <GeneratorForm
-          onGenerationComplete={handleGenerationComplete}
-        />
+        <GeneratorForm onGenerationComplete={handleGenerationComplete} />
       ) : (
-        <ImageUploadForm
-          onGenerationComplete={handleGenerationComplete}
-        />
+        <ImageUploadForm onGenerationComplete={handleGenerationComplete} />
       )}
     </TabsContent>
 
@@ -185,8 +208,7 @@ export default function StudioPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<string>("");
   const [progressValue, setProgressValue] = useState(0);
-  const [progressStatus, setProgressStatus] =
-    useState<ExportProgressStatus>("idle");
+  const [progressStatus] = useState<ExportProgressStatus>("idle");
 
   const handleGenerationComplete = (results: Candidate[]) => {
     setCandidates(results);
@@ -204,19 +226,16 @@ export default function StudioPage() {
     setSelectedCandidate(null);
   };
 
-  // FIX: Menggunakan tipe StudioSettingsHandler yang baru
   const handleSettingsChange: StudioSettingsHandler = (key, value) => {
-    // FIX: Menggunakan perbandingan key yang benar
     if (key === "mode") {
       setActiveMode(value as "text" | "image");
       return;
     }
-    
-    // Logika default untuk EditorSettings
-    setEditorSettings((prev) => ({ 
-      ...prev, 
-      // Safe casting karena TS sudah memverifikasi key bukan "mode" di scope ini
-      [key as keyof EditorSettings]: value as EditorSettings[keyof EditorSettings] 
+
+    setEditorSettings((prev) => ({
+      ...prev,
+      [key as keyof EditorSettings]:
+        value as EditorSettings[keyof EditorSettings],
     }));
   };
 
@@ -228,7 +247,6 @@ export default function StudioPage() {
 
     setIsExporting(true);
     setProgressValue(0);
-    setProgressStatus("processing");
     setExportProgress("Memulai proses ekspor...");
 
     try {
@@ -269,7 +287,6 @@ export default function StudioPage() {
       }
 
       setProgressValue(70);
-      setProgressStatus("downloading");
       setExportProgress("Mengunduh file...");
 
       const link = document.createElement("a");
@@ -297,7 +314,6 @@ export default function StudioPage() {
       });
 
       setProgressValue(100);
-      setProgressStatus("success");
       setExportProgress("Ekspor selesai!");
 
       const fileSizeMB = data.metadata.fileSize
@@ -322,14 +338,12 @@ export default function StudioPage() {
 
       setTimeout(() => {
         setProgressValue(0);
-        setProgressStatus("idle");
         setExportProgress("");
       }, 2000);
     } catch (error) {
       console.error("Error saat ekspor:", error);
 
       setProgressValue(0);
-      setProgressStatus("error");
       setExportProgress("Ekspor gagal!");
 
       if (selectedCandidate) {
@@ -360,7 +374,6 @@ export default function StudioPage() {
 
       setTimeout(() => {
         setProgressValue(0);
-        setProgressStatus("idle");
         setExportProgress("");
       }, 3000);
     } finally {
@@ -380,25 +393,25 @@ export default function StudioPage() {
       />
 
       <div className="min-h-screen w-full bg-gradient-to-b from-zinc-50 via-white to-zinc-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col">
-        {/* Header - Modern dengan Amber Accent */}
+        {/* Header - FIX: Bersihkan Navbar */}
         <header className="sticky top-0 z-50 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl">
-          <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center gap-4 px-4 lg:px-8">
             <Link href="/" className="flex items-center gap-3 group">
               <Image
                 src="/Batiku Only.png"
                 alt="Batiku Logo"
-                width={150}
+                width={120}
                 height={50}
                 className="transition-transform group-hover:scale-105"
                 style={{ height: "auto" }}
               />
             </Link>
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 {selectedCandidate && (
                   <div className="ml-2 px-2 py-1 rounded-full bg-gradient-to-r from-amber-100 to-amber-200 dark:from-amber-950 dark:to-amber-900">
-                    <span className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                    <span className="text-xs font-medium text-amber-800 dark:text-amber-200 truncate">
                       Kandidat #{selectedCandidate.idx}
                     </span>
                   </div>
@@ -406,28 +419,42 @@ export default function StudioPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons: Hanya Ekspor di Mobile/Tablet */}
             <div className="flex items-center gap-2">
-              {selectedCandidate && (
-                <Wastra3DViewer
-                  imageUrl={selectedCandidate.imageUrl}
+              {/* Desktop Actions (Hidden on mobile) */}
+              <div className="hidden lg:flex items-center gap-2">
+                {selectedCandidate && (
+                  <Wastra3DViewer
+                    imageUrl={selectedCandidate.imageUrl}
+                    disabled={!selectedCandidate}
+                    isMenuMode={false} // Tampilan full button
+                  />
+                )}
+                <ExportHistory />
+                <ExportDialog
                   disabled={!selectedCandidate}
+                  isExporting={isExporting}
+                  exportProgress={exportProgress}
+                  onExport={handleExport}
+                  className="h-10 px-4"
                 />
-              )}
-              <ExportHistory />
+              </div>
+
+              {/* Export Dialog (Selalu tampil, ukuran minimalis di mobile) */}
               <ExportDialog
                 disabled={!selectedCandidate}
                 isExporting={isExporting}
                 exportProgress={exportProgress}
                 onExport={handleExport}
+                className="h-9 px-3 text-sm lg:hidden"
               />
             </div>
           </div>
         </header>
 
-        {/* FIX: Ubah dari flex-row dengan overflow-hidden menjadi flex-col di mobile */}
+        {/* FIX: Mengembalikan layout responsif yang benar */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-y-auto">
-          {/* Sidebar Kiri - Mode Selector (Hanya tampil di Desktop) */}
+          {/* Sidebar Kiri - Mode Selector dengan Amber Theme */}
           <aside className="hidden lg:flex flex-col w-20 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
             <nav className="flex flex-col items-center gap-3 py-6 px-3">
               <Tooltip>
@@ -486,14 +513,13 @@ export default function StudioPage() {
 
           {/* Main Content & Canvas Area */}
           <div className="flex-1 flex flex-col">
-            {/* Main Canvas - Sesuaikan padding di mobile, beri min-height untuk UX */}
-            <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10 min-h-[50vh] lg:min-h-full">
+            {/* Main Canvas - Modern Design */}
+            <main className="flex-1 flex items-center justify-center p-6 lg:p-10">
               <div className="w-full max-w-3xl">
                 <div className="aspect-square rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden relative">
                   {selectedCandidate ? (
                     <div className="w-full h-full relative group">
-                      {/* Clear Button */}
-                      <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="absolute top-4 right-4 z-20 transition-opacity duration-200">
                         <Button
                           onClick={clearSelection}
                           size="sm"
@@ -508,7 +534,7 @@ export default function StudioPage() {
                       {/* Image Preview dengan Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-br from-amber-50/30 to-transparent dark:from-amber-950/10 pointer-events-none" />
 
-                      <div className="w-full h-full flex items-center justify-center p-6 sm:p-12">
+                      <div className="w-full h-full flex items-center justify-center p-12">
                         <div className="relative w-full h-full">
                           <Image
                             src={selectedCandidate.imageUrl}
@@ -535,13 +561,13 @@ export default function StudioPage() {
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-center p-8">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-950 dark:to-amber-900 flex items-center justify-center mb-6">
-                        <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600 dark:text-amber-500" />
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-950 dark:to-amber-900 flex items-center justify-center mb-6">
+                        <Sparkles className="w-10 h-10 text-amber-600 dark:text-amber-500" />
                       </div>
                       <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
                         Siap Berkarya?
                       </h3>
-                      <p className="text-zinc-500 dark:text-zinc-400 max-w-md text-sm sm:text-base">
+                      <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
                         Mulai dengan mendeskripsikan motif batik impian Anda
                         atau upload gambar referensi
                       </p>
@@ -565,7 +591,7 @@ export default function StudioPage() {
             </div>
           </div>
 
-          {/* Right Sidebar - Clean Editor Panel (Hanya tampil di Desktop) */}
+          {/* Right Sidebar - Clean Editor Panel */}
           <aside className="hidden lg:flex flex-col w-96 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
             <RightPanelContent
               activeTab={activeTab}
@@ -579,6 +605,34 @@ export default function StudioPage() {
           </aside>
         </div>
       </div>
+
+      {/* STICKY FOOTER - FIX: Tempat baru untuk Preview & History di Mobile */}
+      {selectedCandidate && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 p-3 shadow-2xl">
+          <div className="flex justify-center items-center gap-6 max-w-md mx-auto">
+            {/* 1. Wastra 3D Viewer (Preview) - Icon Only */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Wastra3DViewer
+                  imageUrl={selectedCandidate.imageUrl}
+                  disabled={!selectedCandidate}
+                  isMenuMode={true} // Forces icon-only appearance (isMenuMode is fixed)
+                />
+              </TooltipTrigger>
+              <TooltipContent>Tampilan 3D Wastra</TooltipContent>
+            </Tooltip>
+
+            {/* 2. Export History (Riwayat) - FIX: Tombol dengan teks compact */}
+            <ExportHistory asChild={true}>
+              <Button variant="outline" className="h-10 px-4 gap-2">
+                <History className="w-4 h-4" />
+                Riwayat
+              </Button>
+            </ExportHistory>
+          </div>
+        </div>
+      )}
+      {/* END STICKY FOOTER */}
     </TooltipProvider>
   );
 }
