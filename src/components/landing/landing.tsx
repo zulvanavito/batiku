@@ -125,9 +125,9 @@ export default function BatikuHomepage() {
         }
       `}</style>
 
-      {/* Navigation */}
+      {/* Navigation - Tambah p-4 untuk mobile, dan sembunyikan link sekunder */}
       <nav className="fixed top-0 w-full bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 z-50 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/"
@@ -143,21 +143,23 @@ export default function BatikuHomepage() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
+            {/* Sembunyikan link ini di layar kecil/tablet */}
             <a
               href="#features"
-              className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all hover:scale-105"
+              className="hidden lg:block text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all hover:scale-105"
             >
               Fitur
             </a>
+            {/* Sembunyikan link ini di layar kecil/tablet */}
             <a
               href="#roadmap"
-              className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all hover:scale-105"
+              className="hidden lg:block text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all hover:scale-105"
             >
               Roadmap
             </a>
             <a
               href="/studio"
-              className="px-6 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+              className="px-4 py-2 sm:px-6 sm:py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium text-sm sm:text-base"
             >
               Mulai Berkarya
             </a>
@@ -165,9 +167,10 @@ export default function BatikuHomepage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 overflow-hidden">
+      {/* Hero Section - Sesuaikan padding atas untuk kompensasi fixed nav di mobile */}
+      <section className="pt-28 sm:pt-32 pb-20 px-4 sm:px-6 overflow-hidden">
         <div className="max-w-7xl mx-auto">
+          {/* Grid ini akan stack (1 kolom) di mobile, dan 2 kolom di lg:grid-cols-2 */}
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Left Content */}
             <div
@@ -186,8 +189,9 @@ export default function BatikuHomepage() {
                 Powered by Amazon Bedrock AI
               </div>
 
+              {/* Sesuaikan text size di mobile */}
               <h1
-                className={`text-6xl lg:text-7xl font-bold text-zinc-900 dark:text-zinc-50 leading-tight ${
+                className={`text-5xl sm:text-6xl lg:text-7xl font-bold text-zinc-900 dark:text-zinc-50 leading-tight ${
                   isVisible
                     ? "animate-fade-in-up animation-delay-200"
                     : "opacity-0"
@@ -201,7 +205,7 @@ export default function BatikuHomepage() {
               </h1>
 
               <p
-                className={`text-xl text-zinc-600 dark:text-zinc-400 leading-relaxed ${
+                className={`text-lg sm:text-xl text-zinc-600 dark:text-zinc-400 leading-relaxed ${
                   isVisible
                     ? "animate-fade-in-up animation-delay-400"
                     : "opacity-0"
@@ -212,6 +216,7 @@ export default function BatikuHomepage() {
                 profesional dan ekspor siap produksi.
               </p>
 
+              {/* Pastikan tombol CTA bisa wrap di layar terkecil */}
               <div
                 className={`flex flex-wrap gap-4 ${
                   isVisible
@@ -221,50 +226,57 @@ export default function BatikuHomepage() {
               >
                 <a
                   href="/studio"
-                  className="group px-8 py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-200 font-semibold flex items-center gap-2"
+                  className="group px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-200 font-semibold flex items-center gap-2 text-base"
                 >
                   Coba Gratis Sekarang
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </a>
                 <a
                   href="#features"
-                  className="px-8 py-4 border-2 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-full hover:border-amber-600 dark:hover:border-amber-600 hover:text-amber-600 hover:scale-105 transition-all duration-200 font-semibold"
+                  className="px-6 sm:px-8 py-3 sm:py-4 border-2 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-full hover:border-amber-600 dark:hover:border-amber-600 hover:text-amber-600 hover:scale-105 transition-all duration-200 font-semibold text-base"
                 >
                   Pelajari Lebih Lanjut
                 </a>
               </div>
 
+              {/* Statistik - Sesuaikan gap di mobile */}
               <div
-                className={`flex items-center gap-8 pt-4 ${
+                className={`flex items-center gap-4 sm:gap-8 pt-4 ${
                   isVisible
                     ? "animate-fade-in-up animation-delay-800"
                     : "opacity-0"
                 }`}
               >
                 <div className="text-center hover:scale-110 transition-transform cursor-pointer">
-                  <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+                  <div className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-50">
                     300
                   </div>
-                  <div className="text-sm text-zinc-500">DPI Export</div>
+                  <div className="text-xs sm:text-sm text-zinc-500">
+                    DPI Export
+                  </div>
                 </div>
                 <div className="w-px h-12 bg-zinc-200 dark:bg-zinc-800"></div>
                 <div className="text-center hover:scale-110 transition-transform cursor-pointer">
-                  <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+                  <div className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-50">
                     4+
                   </div>
-                  <div className="text-sm text-zinc-500">Keluarga Motif</div>
+                  <div className="text-xs sm:text-sm text-zinc-500">
+                    Keluarga Motif
+                  </div>
                 </div>
-                <div className="w-px h-12 bg-zinc-200 dark:bg-zinc-800"></div>
-                <div className="text-center hover:scale-110 transition-transform cursor-pointer">
-                  <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+                <div className="w-px h-12 bg-zinc-200 dark:bg-zinc-800 hidden sm:block"></div>
+                <div className="text-center hover:scale-110 transition-transform cursor-pointer hidden sm:block">
+                  <div className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-50">
                     PNG
                   </div>
-                  <div className="text-sm text-zinc-500">PNG Ready</div>
+                  <div className="text-xs sm:text-sm text-zinc-500">
+                    PNG Ready
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Visual - Updated with Image Placeholders & Animations */}
+            {/* Right Visual */}
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-amber-200 to-amber-300 dark:from-amber-900/30 dark:to-amber-800/30 rounded-3xl blur-3xl opacity-30 animate-pulse-slow"></div>
               <div className="relative grid grid-cols-2 gap-4">
@@ -306,13 +318,16 @@ export default function BatikuHomepage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-6 bg-white dark:bg-zinc-900">
+      <section
+        id="features"
+        className="py-20 px-4 sm:px-6 bg-white dark:bg-zinc-900"
+      >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 animate-fade-in-up">
-            <h2 className="text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">
               Fitur Unggulan
             </h2>
-            <p className="text-xl text-zinc-600 dark:text-zinc-400">
+            <p className="text-lg sm:text-xl text-zinc-600 dark:text-zinc-400">
               Semua yang Anda butuhkan untuk menciptakan batik berkelas dunia
             </p>
           </div>
@@ -323,20 +338,20 @@ export default function BatikuHomepage() {
                 key={i}
                 onMouseEnter={() => setHoveredFeature(i)}
                 onMouseLeave={() => setHoveredFeature(null)}
-                className="group p-8 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 hover:border-amber-600 dark:hover:border-amber-600 transition-all duration-300 hover:shadow-xl cursor-pointer animate-fade-in-up hover:scale-105"
+                className="group p-6 sm:p-8 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 hover:border-amber-600 dark:hover:border-amber-600 transition-all duration-300 hover:shadow-xl cursor-pointer animate-fade-in-up hover:scale-105"
                 style={{ animationDelay: `${i * 0.1}s` }}
               >
                 <div
-                  className={`w-14 h-14 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center mb-6 transform transition-all duration-300 ${
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center mb-6 transform transition-all duration-300 ${
                     hoveredFeature === i ? "scale-110 rotate-12" : ""
                   }`}
                 >
-                  <feature.icon className="w-7 h-7 text-white" />
+                  <feature.icon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-3">
+                <h3 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-3">
                   {feature.title}
                 </h3>
-                <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-sm sm:text-base">
                   {feature.description}
                 </p>
               </div>
@@ -345,19 +360,20 @@ export default function BatikuHomepage() {
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-20 px-6">
+      {/* How It Works - Ubah grid agar 2 kolom di mobile */}
+      <section className="py-20 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 animate-fade-in-up">
-            <h2 className="text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">
               Cara Kerja
             </h2>
-            <p className="text-xl text-zinc-600 dark:text-zinc-400">
+            <p className="text-lg sm:text-xl text-zinc-600 dark:text-zinc-400">
               Dari ide sampai produksi, hanya dalam 4 langkah
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-8">
+          {/* FIX: Ubah dari md:grid-cols-4 menjadi grid-cols-2 md:grid-cols-4 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
               {
                 step: "01",
@@ -381,13 +397,15 @@ export default function BatikuHomepage() {
                 className="text-center space-y-4 animate-fade-in-up hover:scale-105 transition-transform duration-300"
                 style={{ animationDelay: `${i * 0.15}s` }}
               >
-                <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center text-white font-bold text-xl hover:rotate-12 transition-transform duration-300 animate-pulse-slow">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center text-white font-bold text-lg sm:text-xl hover:rotate-12 transition-transform duration-300 animate-pulse-slow">
                   {item.step}
                 </div>
-                <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+                <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-50">
                   {item.title}
                 </h3>
-                <p className="text-zinc-600 dark:text-zinc-400">{item.desc}</p>
+                <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base">
+                  {item.desc}
+                </p>
               </div>
             ))}
           </div>
@@ -395,13 +413,16 @@ export default function BatikuHomepage() {
       </section>
 
       {/* Roadmap */}
-      <section id="roadmap" className="py-20 px-6 bg-white dark:bg-zinc-900">
+      <section
+        id="roadmap"
+        className="py-20 px-4 sm:px-6 bg-white dark:bg-zinc-900"
+      >
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16 animate-fade-in-up">
-            <h2 className="text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">
               Roadmap
             </h2>
-            <p className="text-xl text-zinc-600 dark:text-zinc-400">
+            <p className="text-lg sm:text-xl text-zinc-600 dark:text-zinc-400">
               Kami terus berinovasi untuk Anda
             </p>
           </div>
@@ -459,7 +480,7 @@ export default function BatikuHomepage() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                      <span className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-50">
                         {item.version}
                       </span>
                       <span
@@ -478,18 +499,19 @@ export default function BatikuHomepage() {
                           : "Planned"}
                       </span>
                     </div>
-                    <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+                    <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-50">
                       {item.title}
                     </h3>
                   </div>
                 </div>
+                {/* Pastikan fitur wrap di mobile */}
                 <div className="flex flex-wrap gap-2">
                   {item.features.map((feature, j) => (
                     <div
                       key={j}
-                      className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm text-zinc-700 dark:text-zinc-300 hover:bg-amber-100 dark:hover:bg-amber-950 hover:scale-105 transition-all"
+                      className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 hover:bg-amber-100 dark:hover:bg-amber-950 hover:scale-105 transition-all"
                     >
-                      <Check className="w-4 h-4 text-amber-600" />
+                      <Check className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600" />
                       {feature}
                     </div>
                   ))}
@@ -501,21 +523,21 @@ export default function BatikuHomepage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="p-12 rounded-3xl bg-gradient-to-br from-amber-600 to-amber-800 text-white relative overflow-hidden hover:scale-105 transition-transform duration-300 animate-fade-in-up">
+          <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-amber-600 to-amber-800 text-white relative overflow-hidden hover:scale-105 transition-transform duration-300 animate-fade-in-up">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-20"></div>
             <div className="relative space-y-6">
-              <h2 className="text-4xl lg:text-5xl font-bold">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold">
                 Siap Menciptakan Batik Impian Anda?
               </h2>
-              <p className="text-xl text-amber-100">
+              <p className="text-base sm:text-xl text-amber-100">
                 Bergabunglah dengan ratusan desainer & perajin yang mempercayai
                 Batiku
               </p>
               <a
                 href="/studio"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-amber-700 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-200 font-bold text-lg"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-white text-amber-700 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-200 font-bold text-base sm:text-lg"
               >
                 Mulai Berkarya Gratis
                 <ArrowRight className="w-5 h-5" />
@@ -526,7 +548,7 @@ export default function BatikuHomepage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-zinc-200 dark:border-zinc-800">
+      <footer className="py-12 px-4 sm:px-6 border-t border-zinc-200 dark:border-zinc-800">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">

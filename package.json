@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "vercel-build": "npm rebuild sharp --platform=linux --arch=x64 && next build",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
@@ -39,6 +40,7 @@
     "next-themes": "^0.4.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "sharp": "^0.34.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "three": "^0.180.0"

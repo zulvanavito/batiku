@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -55,6 +56,118 @@ type ExportProgressStatus =
   | "success"
   | "error";
 
+// START FIX: TIPE BARU UNTUK MENGIZINKAN KEY "mode"
+type StudioSettingsKey = keyof EditorSettings | "mode";
+type StudioSettingsHandler = <K extends StudioSettingsKey>(
+  key: K,
+  value: K extends "mode" ? ("text" | "image") : EditorSettings[Exclude<K, "mode">]
+) => void;
+
+type RightPanelProps = {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  activeMode: "text" | "image";
+  selectedCandidate: Candidate | null;
+  editorSettings: EditorSettings;
+  handleGenerationComplete: (results: Candidate[]) => void;
+  handleSettingsChange: StudioSettingsHandler; // MENGGUNAKAN TIPE HANDLER YANG SUDAH DI-FIX
+};
+// END FIX: TIPE BARU UNTUK MENGIZINKAN KEY "mode"
+
+const RightPanelContent = ({
+  activeTab,
+  setActiveTab,
+  activeMode,
+  selectedCandidate,
+  editorSettings,
+  handleGenerationComplete,
+  handleSettingsChange,
+}: RightPanelProps) => (
+  <Tabs
+    value={activeTab}
+    onValueChange={setActiveTab}
+    className="flex flex-col h-full"
+  >
+    <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800">
+      <TabsList className="grid w-full grid-cols-2 bg-zinc-100 dark:bg-zinc-900 p-1">
+        <TabsTrigger
+          value="generate"
+          className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 text-sm sm:text-base"
+        >
+          <Wand2 className="w-4 h-4 mr-2" />
+          Generate
+        </TabsTrigger>
+        <TabsTrigger
+          value="edit"
+          className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 to-amber-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 text-sm sm:text-base"
+        >
+          <Palette className="w-4 h-4 mr-2" />
+          Editor
+        </TabsTrigger>
+      </TabsList>
+    </div>
+
+    <TabsContent
+      value="generate"
+      className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6"
+    >
+      {/* Mobile Mode Selector: Tampilkan di bawah tabs content, sembunyikan di desktop */}
+      <div className="lg:hidden flex justify-center gap-4 p-2 mb-2 border-b border-zinc-200 dark:border-zinc-800">
+        <button
+          // FIX: Parameter pertama "mode" sekarang valid berkat StudioSettingsHandler
+          onClick={() => (activeMode === "text" ? null : handleSettingsChange("mode", "text"))}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+            activeMode === "text"
+              ? "bg-amber-600 text-white"
+              : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+          }`}
+        >
+          <Type className="h-4 w-4 inline mr-1" /> Teks
+        </button>
+        <button
+          // FIX: Parameter pertama "mode" sekarang valid berkat StudioSettingsHandler
+          onClick={() => (activeMode === "image" ? null : handleSettingsChange("mode", "image"))}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+            activeMode === "image"
+              ? "bg-amber-600 text-white"
+              : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+          }`}
+        >
+          <FileImage className="h-4 w-4 inline mr-1" /> Gambar
+        </button>
+      </div>
+
+      {activeMode === "text" ? (
+        <GeneratorForm
+          onGenerationComplete={handleGenerationComplete}
+        />
+      ) : (
+        <ImageUploadForm
+          onGenerationComplete={handleGenerationComplete}
+        />
+      )}
+    </TabsContent>
+
+    <TabsContent value="edit" className="flex-1 overflow-y-auto p-4 sm:p-6">
+      {!selectedCandidate ? (
+        <div className="h-full flex flex-col items-center justify-center text-center p-8">
+          <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-4">
+            <Palette className="w-8 h-8 text-zinc-400 dark:text-zinc-600" />
+          </div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Pilih salah satu kandidat untuk mulai mengedit
+          </p>
+        </div>
+      ) : (
+        <EditorPanel
+          settings={editorSettings}
+          onSettingsChange={handleSettingsChange as any}
+        />
+      )}
+    </TabsContent>
+  </Tabs>
+);
+
 export default function StudioPage() {
   const [activeMode, setActiveMode] = useState<"text" | "image">("text");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -91,11 +204,20 @@ export default function StudioPage() {
     setSelectedCandidate(null);
   };
 
-  const handleSettingsChange = <K extends keyof EditorSettings>(
-    key: K,
-    value: EditorSettings[K]
-  ) => {
-    setEditorSettings((prev) => ({ ...prev, [key]: value }));
+  // FIX: Menggunakan tipe StudioSettingsHandler yang baru
+  const handleSettingsChange: StudioSettingsHandler = (key, value) => {
+    // FIX: Menggunakan perbandingan key yang benar
+    if (key === "mode") {
+      setActiveMode(value as "text" | "image");
+      return;
+    }
+    
+    // Logika default untuk EditorSettings
+    setEditorSettings((prev) => ({ 
+      ...prev, 
+      // Safe casting karena TS sudah memverifikasi key bukan "mode" di scope ini
+      [key as keyof EditorSettings]: value as EditorSettings[keyof EditorSettings] 
+    }));
   };
 
   const handleExport = async (rapportCm: RapportSize, format: ExportFormat) => {
@@ -260,7 +382,7 @@ export default function StudioPage() {
       <div className="min-h-screen w-full bg-gradient-to-b from-zinc-50 via-white to-zinc-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col">
         {/* Header - Modern dengan Amber Accent */}
         <header className="sticky top-0 z-50 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl">
-          <div className="flex h-16 items-center gap-4 px-6 lg:px-8">
+          <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
             <Link href="/" className="flex items-center gap-3 group">
               <Image
                 src="/Batiku Only.png"
@@ -303,9 +425,10 @@ export default function StudioPage() {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar Kiri - Mode Selector dengan Amber Theme */}
-          <aside className="hidden sm:flex flex-col w-20 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        {/* FIX: Ubah dari flex-row dengan overflow-hidden menjadi flex-col di mobile */}
+        <div className="flex flex-1 flex-col lg:flex-row overflow-y-auto">
+          {/* Sidebar Kiri - Mode Selector (Hanya tampil di Desktop) */}
+          <aside className="hidden lg:flex flex-col w-20 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
             <nav className="flex flex-col items-center gap-3 py-6 px-3">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -361,130 +484,98 @@ export default function StudioPage() {
             </nav>
           </aside>
 
-          {/* Main Canvas - Modern Design */}
-          <main className="flex-1 flex items-center justify-center p-6 lg:p-10">
-            <div className="w-full max-w-3xl">
-              <div className="aspect-square rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden relative">
-                {selectedCandidate ? (
-                  <div className="w-full h-full relative group">
-                    {/* Clear Button */}
-                    <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <Button
-                        onClick={clearSelection}
-                        size="sm"
-                        variant="secondary"
-                        className="shadow-lg backdrop-blur-sm bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-900"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Batal Pilih
-                      </Button>
-                    </div>
+          {/* Main Content & Canvas Area */}
+          <div className="flex-1 flex flex-col">
+            {/* Main Canvas - Sesuaikan padding di mobile, beri min-height untuk UX */}
+            <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10 min-h-[50vh] lg:min-h-full">
+              <div className="w-full max-w-3xl">
+                <div className="aspect-square rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden relative">
+                  {selectedCandidate ? (
+                    <div className="w-full h-full relative group">
+                      {/* Clear Button */}
+                      <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <Button
+                          onClick={clearSelection}
+                          size="sm"
+                          variant="secondary"
+                          className="shadow-lg backdrop-blur-sm bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-900"
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Batal Pilih
+                        </Button>
+                      </div>
 
-                    {/* Image Preview dengan Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-50/30 to-transparent dark:from-amber-950/10 pointer-events-none" />
+                      {/* Image Preview dengan Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-amber-50/30 to-transparent dark:from-amber-950/10 pointer-events-none" />
 
-                    <div className="w-full h-full flex items-center justify-center p-12">
-                      <div className="relative w-full h-full">
-                        <Image
-                          src={selectedCandidate.imageUrl}
-                          alt="Preview Motif Batik"
-                          fill
-                          className="object-contain rounded-lg drop-shadow-2xl"
-                          unoptimized
-                          priority
-                        />
+                      <div className="w-full h-full flex items-center justify-center p-6 sm:p-12">
+                        <div className="relative w-full h-full">
+                          <Image
+                            src={selectedCandidate.imageUrl}
+                            alt="Preview Motif Batik"
+                            fill
+                            className="object-contain rounded-lg drop-shadow-2xl"
+                            unoptimized
+                            priority
+                          />
+                        </div>
+                      </div>
+
+                      {/* Info Badge */}
+                      <div className="absolute bottom-4 left-4 px-4 py-2 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm shadow-lg border border-zinc-200 dark:border-zinc-800">
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          Kandidat #{selectedCandidate.idx}
+                        </span>
                       </div>
                     </div>
-
-                    {/* Info Badge */}
-                    <div className="absolute bottom-4 left-4 px-4 py-2 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm shadow-lg border border-zinc-200 dark:border-zinc-800">
-                      <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        Kandidat #{selectedCandidate.idx}
-                      </span>
+                  ) : candidates.length > 0 ? (
+                    <ResultsDisplay
+                      candidates={candidates}
+                      onSelectCandidate={handleSelectCandidate}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-center p-8">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-950 dark:to-amber-900 flex items-center justify-center mb-6">
+                        <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600 dark:text-amber-500" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+                        Siap Berkarya?
+                      </h3>
+                      <p className="text-zinc-500 dark:text-zinc-400 max-w-md text-sm sm:text-base">
+                        Mulai dengan mendeskripsikan motif batik impian Anda
+                        atau upload gambar referensi
+                      </p>
                     </div>
-                  </div>
-                ) : candidates.length > 0 ? (
-                  <ResultsDisplay
-                    candidates={candidates}
-                    onSelectCandidate={handleSelectCandidate}
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-8">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-950 dark:to-amber-900 flex items-center justify-center mb-6">
-                      <Sparkles className="w-10 h-10 text-amber-600 dark:text-amber-500" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
-                      Siap Berkarya?
-                    </h3>
-                    <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
-                      Mulai dengan mendeskripsikan motif batik impian Anda atau
-                      upload gambar referensi
-                    </p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+            </main>
+
+            {/* Bottom Panel: Tampil hanya di Mobile/Tablet (< lg) */}
+            <div className="lg:hidden w-full border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+              <RightPanelContent
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                activeMode={activeMode}
+                selectedCandidate={selectedCandidate}
+                editorSettings={editorSettings}
+                handleGenerationComplete={handleGenerationComplete}
+                handleSettingsChange={handleSettingsChange}
+              />
             </div>
-          </main>
+          </div>
 
-          {/* Right Sidebar - Clean Editor Panel */}
+          {/* Right Sidebar - Clean Editor Panel (Hanya tampil di Desktop) */}
           <aside className="hidden lg:flex flex-col w-96 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="flex flex-col h-full"
-            >
-              <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
-                <TabsList className="grid w-full grid-cols-2 bg-zinc-100 dark:bg-zinc-900 p-1">
-                  <TabsTrigger
-                    value="generate"
-                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
-                  >
-                    <Wand2 className="w-4 h-4 mr-2" />
-                    Generate
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="edit"
-                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
-                  >
-                    <Palette className="w-4 h-4 mr-2" />
-                    Editor
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <TabsContent
-                value="generate"
-                className="flex-1 overflow-y-auto p-6 space-y-6"
-              >
-                {activeMode === "text" ? (
-                  <GeneratorForm
-                    onGenerationComplete={handleGenerationComplete}
-                  />
-                ) : (
-                  <ImageUploadForm
-                    onGenerationComplete={handleGenerationComplete}
-                  />
-                )}
-              </TabsContent>
-
-              <TabsContent value="edit" className="flex-1 overflow-y-auto p-6">
-                {!selectedCandidate ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                    <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-4">
-                      <Palette className="w-8 h-8 text-zinc-400 dark:text-zinc-600" />
-                    </div>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                      Pilih salah satu kandidat untuk mulai mengedit
-                    </p>
-                  </div>
-                ) : (
-                  <EditorPanel
-                    settings={editorSettings}
-                    onSettingsChange={handleSettingsChange}
-                  />
-                )}
-              </TabsContent>
-            </Tabs>
+            <RightPanelContent
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              activeMode={activeMode}
+              selectedCandidate={selectedCandidate}
+              editorSettings={editorSettings}
+              handleGenerationComplete={handleGenerationComplete}
+              handleSettingsChange={handleSettingsChange}
+            />
           </aside>
         </div>
       </div>
