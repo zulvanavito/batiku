@@ -18,13 +18,11 @@ import {
   Wand2,
   X,
   Sparkles,
-  History, // Mengganti ViewInAr yang error
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { toast, Toaster } from "sonner";
 
-// Import komponen-komponen studio
 import { GeneratorForm } from "@/components/studio/generator-form";
 import { ImageUploadForm } from "@/components/studio/image-upload-form";
 import { ResultsDisplay } from "@/components/studio/results-display";
@@ -37,7 +35,6 @@ import { ExportHistory } from "@/components/studio/export-history";
 import { ExportProgress } from "@/components/studio/export-progress";
 import { Wastra3DViewer } from "@/components/studio/wastra-3d-viewer";
 
-// Import utilities & types
 import { exportHistory } from "@/lib/export-history";
 import type {
   RapportSize,
@@ -45,11 +42,6 @@ import type {
   ExportResponse,
 } from "@/app/types/export";
 
-// =========================================================
-// FIX: MODULE AUGMENTATION UNTUK MENGATASI PROP ERRORS (TS2322)
-// =========================================================
-
-// 1. Tambahkan props custom ke ExportDialog
 declare module "@/components/studio/export-dialog" {
   export interface ExportDialogProps {
     asChild?: boolean;
@@ -57,13 +49,11 @@ declare module "@/components/studio/export-dialog" {
   }
 }
 
-// 2. Tambahkan props custom ke Wastra3DViewer
 declare module "@/components/studio/wastra-3d-viewer" {
   export interface Wastra3DViewerProps {
-    isMenuMode?: boolean; // isMenuMode digunakan untuk memicu tampilan ikon
+    isMenuMode?: boolean;
   }
 }
-// =========================================================
 
 type Candidate = {
   imageUrl: string;
@@ -77,7 +67,6 @@ type ExportProgressStatus =
   | "success"
   | "error";
 
-// FIX: Definisikan tipe handler baru untuk mengatasi TS error (dari sesi sebelumnya)
 type StudioSettingsKey = keyof EditorSettings | "mode";
 type StudioSettingsHandler = <K extends StudioSettingsKey>(
   key: K,
@@ -96,7 +85,6 @@ type RightPanelProps = {
   handleSettingsChange: StudioSettingsHandler;
 };
 
-// FIX: Komponen RightPanelContent dipertahankan untuk layout responsif
 const RightPanelContent = ({
   activeTab,
   setActiveTab,
@@ -518,7 +506,7 @@ export default function StudioPage() {
               <div className="w-full max-w-3xl">
                 <div className="aspect-square rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden relative">
                   {selectedCandidate ? (
-                    <div className="w-full h-full relative group">
+                    <div className="w-full h-full relative grouppm">
                       <div className="absolute top-4 right-4 z-20 transition-opacity duration-200">
                         <Button
                           onClick={clearSelection}
@@ -606,33 +594,31 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* STICKY FOOTER - FIX: Tempat baru untuk Preview & History di Mobile */}
       {selectedCandidate && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 p-3 shadow-2xl">
-          <div className="flex justify-center items-center gap-6 max-w-md mx-auto">
-            {/* 1. Wastra 3D Viewer (Preview) - Icon Only */}
-            <Tooltip>
-              <TooltipTrigger asChild>
+        <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 shadow-2xl">
+          <div className="px-4 py-3">
+            {selectedCandidate ? (
+              <div className="flex items-center justify-center gap-3 max-w-sm mx-auto">
                 <Wastra3DViewer
                   imageUrl={selectedCandidate.imageUrl}
-                  disabled={!selectedCandidate}
-                  isMenuMode={true} // Forces icon-only appearance (isMenuMode is fixed)
+                  disabled={false}
+                  isMenuMode={true}
                 />
-              </TooltipTrigger>
-              <TooltipContent>Tampilan 3D Wastra</TooltipContent>
-            </Tooltip>
 
-            {/* 2. Export History (Riwayat) - FIX: Tombol dengan teks compact */}
-            <ExportHistory asChild={true}>
-              <Button variant="outline" className="h-10 px-4 gap-2">
-                <History className="w-4 h-4" />
-                Riwayat
-              </Button>
-            </ExportHistory>
+                <ExportHistory variant="outline" size="sm" showBadge={true} />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center max-w-sm mx-auto">
+                <ExportHistory
+                  variant="outline"
+                  size="default"
+                  showBadge={true}
+                ></ExportHistory>
+              </div>
+            )}
           </div>
         </div>
       )}
-      {/* END STICKY FOOTER */}
     </TooltipProvider>
   );
 }

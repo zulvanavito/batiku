@@ -20,19 +20,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Box, Loader2, Shirt, Layers } from "lucide-react"; // FIX: Tambah X untuk tombol tutup
+import { Box, Loader2, Shirt, Layers } from "lucide-react";
 import * as THREE from "three";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"; // FIX: Import Tooltip
-import { cn } from "@/lib/utils"; // FIX: Import cn
+} from "@/components/ui/tooltip";
 
-interface Wastra3DViewerProps {
+export interface Wastra3DViewerProps {
   imageUrl: string;
   disabled?: boolean;
-  // FIX: Tambahkan prop untuk kontrol tampilan di menu/footer mobile
   isMenuMode?: boolean;
 }
 
@@ -43,23 +41,18 @@ function ShirtGLBModel({ textureUrl }: { textureUrl: string }) {
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(1, 1);
   texture.flipY = false;
-
-  // Fix texture color space
   texture.colorSpace = THREE.SRGBColorSpace;
 
   useEffect(() => {
     scene.traverse((child: any) => {
       if (child.isMesh) {
-        // Create a new standard material with proper settings
         child.material = new THREE.MeshStandardMaterial({
           map: texture,
-          roughness: 0.85, // Higher = less shiny
-          metalness: 0.0, // Fabric should not be metallic
+          roughness: 0.85,
+          metalness: 0.0,
           side: THREE.FrontSide,
         });
         child.material.needsUpdate = true;
-
-        // Disable receive shadow to reduce lighting effects
         child.receiveShadow = false;
         child.castShadow = false;
       }
@@ -110,7 +103,7 @@ function LoadingFallback() {
 
 export function Wastra3DViewer({
   imageUrl,
-  disabled,
+  disabled = false,
   isMenuMode = false,
 }: Wastra3DViewerProps) {
   const [open, setOpen] = useState(false);
@@ -126,34 +119,47 @@ export function Wastra3DViewer({
     setIsLoading(true);
   };
 
-  // Konten tombol trigger default
-  const defaultTrigger = (
-    <Button
-      variant="outline"
-      size={isMenuMode ? "default" : "sm"}
-      disabled={disabled}
-      className={cn(
-        "gap-2 h-9 px-3 sm:h-10 sm:px-4", // Ukuran default (navbar desktop)
-        isMenuMode && "w-full justify-center h-10 px-4 text-base" // Tampilan penuh di dalam menu/footer mobile (ikon saja)
-      )}
-    >
-      {/* FIX: Menggunakan Box sebagai ikon 3D Preview */}
-      <Box className={cn("w-6 h-6", isMenuMode ? "w-6 h-6" : "w-4 h-4 mr-2")} />
-      {/* Text hanya tampil di desktop navbar atau saat isMenuMode (untuk tombol penuh di menu) */}
-      <span className={cn(isMenuMode ? "hidden lg:inline" : "inline")}>
-        3D Preview
-      </span>
-    </Button>
-  );
+  // FIX: Render berbeda untuk mode icon-only vs full button
+  const renderTrigger = () => {
+    if (isMenuMode) {
+      // Mode Icon Only - untuk mobile footer
+      return (
+        <Button
+          variant="outline"
+          size="icon"
+          disabled={disabled}
+          className="h-10 w-10 flex-shrink-0"
+        >
+          <Box className="w-5 h-5" />
+        </Button>
+      );
+    }
+
+    // Mode Full Button - untuk navbar desktop
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={disabled}
+        className="gap-2 h-10 px-3 sm:px-4"
+      >
+        <Box className="w-4 h-4" />
+        <span className="hidden sm:inline">3D Preview</span>
+      </Button>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Tooltip delayDuration={0}>
+      <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
-          <DialogTrigger asChild>{defaultTrigger}</DialogTrigger>
+          <DialogTrigger asChild>{renderTrigger()}</DialogTrigger>
         </TooltipTrigger>
-        <TooltipContent>Tampilan 3D Wastra</TooltipContent>
+        <TooltipContent side={isMenuMode ? "top" : "bottom"}>
+          <p>Tampilan 3D Wastra</p>
+        </TooltipContent>
       </Tooltip>
+
       <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Wastra 3D Preview</DialogTitle>
@@ -183,13 +189,12 @@ export function Wastra3DViewer({
               gl={{
                 antialias: true,
                 toneMapping: THREE.ACESFilmicToneMapping,
-                toneMappingExposure: 1.0, // Adjust if still too bright
+                toneMappingExposure: 1.0,
               }}
             >
               <Suspense fallback={null}>
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
 
-                {/* Balanced lighting - not too bright */}
                 <ambientLight intensity={0.5} />
                 <directionalLight
                   position={[3, 3, 3]}
@@ -215,7 +220,6 @@ export function Wastra3DViewer({
                   dampingFactor={0.05}
                 />
 
-                {/* Soft environment lighting */}
                 <Environment preset="apartment" environmentIntensity={0.3} />
               </Suspense>
             </Canvas>
@@ -235,7 +239,6 @@ export function Wastra3DViewer({
               <Suspense fallback={null}>
                 <PerspectiveCamera makeDefault position={[0, 0, 4]} fov={60} />
 
-                {/* Soft lighting for fabric */}
                 <ambientLight intensity={0.6} />
                 <directionalLight
                   position={[2, 2, 2]}
